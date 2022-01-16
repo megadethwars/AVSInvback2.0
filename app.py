@@ -9,9 +9,6 @@ env_name = 'local'
 app = create_app(env_name)
 
 
-
-
-
 if __name__ == '__main__':
 
   # run app

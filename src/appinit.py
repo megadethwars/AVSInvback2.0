@@ -1,3 +1,4 @@
+import imp
 import random
 from flask import Flask, current_app, render_template
 from flask_cors import CORS
@@ -6,8 +7,8 @@ from flask_cors import CORS
 #from flask_migrate import Migrate
 #from .shared import returnCodes
 #from .views.LugaresView import lugares_api as lugares_blueprint
-from views.LugaresView import nsLugares as nsLugares
-
+#from views.LugaresView import nsLugares as nsLugares
+from .controllers.lugares import get_lugar
 from flask_restx import Api, fields, Resource
 from flask_sqlalchemy import SQLAlchemy
 
