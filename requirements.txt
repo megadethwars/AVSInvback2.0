@@ -2,3 +2,4 @@ Flask==1.1.4
 Flask-Cors==3.0.10
 flask-restx==0.4.0
 Flask-SQLAlchemy==2.5.1
+marshmallow==3.12.2

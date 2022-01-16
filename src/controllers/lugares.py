@@ -1,5 +1,5 @@
 from flask import Flask, request, json, Response, Blueprint, g
-#from marshmallow import ValidationError
+from marshmallow import ValidationError
 
 from ..shared import returnCodes
 from flask_restx import Api,fields,Resource
