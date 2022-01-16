@@ -1,12 +1,12 @@
 import random
 from flask import Flask, current_app, render_template
 from flask_cors import CORS
-from .config import app_config
+#from .config import app_config
 #from .models import db
-from flask_migrate import Migrate
-from .shared import returnCodes
-from .views.LugaresView import lugares_api as lugares_blueprint
-from .views.LugaresView import nsLugares as nsLugares
+#from flask_migrate import Migrate
+#from .shared import returnCodes
+#from .views.LugaresView import lugares_api as lugares_blueprint
+#from .views.LugaresView import nsLugares as nsLugares
 
 from flask_restx import Api, fields, Resource
 from flask_sqlalchemy import SQLAlchemy
@@ -36,15 +36,13 @@ def create_app(env_name):
 
     #api.add_namespace(ns=nsRoles,path="/api/v1/roles")
     #api.add_namespace(ns=nsLugares,path="/api/v1/lugares")
-    @app.errorhandler(404)
-    # inbuilt function which takes error as parameter
-    def not_found(e):
-        return returnCodes.custom_response(None, 404, 4041, "TPM-4")
+    #@app.errorhandler(404) 
+    #def not_found(e):
+    #    return returnCodes.custom_response(None, 404, 4041, "TPM-4")
 
-    @app.errorhandler(400)
-    # inbuilt function which takes error as parameter
-    def not_found(e):
-        return returnCodes.custom_response(None, 400, 4001, "TPM-2")
+    #@app.errorhandler(400)
+    #def not_found(e):
+    #    return returnCodes.custom_response(None, 400, 4001, "TPM-2")
 
     #@api.route('/home')
     #class HelloWorld(Resource):
