@@ -5,8 +5,8 @@ from flask_cors import CORS
 #from .models import db
 #from flask_migrate import Migrate
 #from .shared import returnCodes
-from .views.LugaresView import lugares_api as lugares_blueprint
-from .views.LugaresView import nsLugares as nsLugares
+#from .views.LugaresView import lugares_api as lugares_blueprint
+from views.LugaresView import nsLugares as nsLugares
 
 from flask_restx import Api, fields, Resource
 from flask_sqlalchemy import SQLAlchemy
@@ -18,7 +18,7 @@ def create_app(env_name):
     # app initiliazation
     app = Flask(__name__)
     # cors
-    cors = CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
+    #cors = CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
 
     #app.config.from_object(app_config[env_name])
 
@@ -30,7 +30,7 @@ def create_app(env_name):
     #migrate = Migrate(app, db)
 
     #app.register_blueprint(roles_blueprint, url_prefix="/api/v1/")
-    app.register_blueprint(lugares_blueprint, url_prefix="/api/v1/")
+    #app.register_blueprint(lugares_blueprint, url_prefix="/api/v1/")
     api = Api(app,title="Inventory API", version="1.1", description="A simple inventory API",)
 
 
