@@ -32,11 +32,11 @@ def create_app(env_name):
 
     #app.register_blueprint(roles_blueprint, url_prefix="/api/v1/")
     #app.register_blueprint(lugares_blueprint, url_prefix="/api/v1/")
-    #api = Api(app,title="Inventory API", version="1.1", description="A simple inventory API",)
+    api = Api(app,title="Inventory API", version="1.1", description="A simple inventory API",)
 
 
     #api.add_namespace(ns=nsRoles,path="/api/v1/roles")
-    #api.add_namespace(ns=nsLugares,path="/api/v1/lugares")
+    api.add_namespace(ns=nsLugares,path="/api/v1/lugares")
     #@app.errorhandler(404) 
     #def not_found(e):
     #    return returnCodes.custom_response(None, 404, 4041, "TPM-4")
