@@ -1,7 +1,7 @@
 from flask import Flask, request, json, Response, Blueprint, g
-from marshmallow import ValidationError
+#from marshmallow import ValidationError
 
-from ..shared import returnCodes
+#from ..shared import returnCodes
 from flask_restx import Api,fields,Resource
 
 app = Flask(__name__)
@@ -49,4 +49,5 @@ class LugaresList(Resource):
                 "id":2
             }
         ]
-        return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
+        return "OK"
+        #return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
