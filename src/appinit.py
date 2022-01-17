@@ -2,13 +2,13 @@ import imp
 import random
 from flask import Flask, current_app, render_template
 from flask_cors import CORS
-#from .config import app_config
+from .config import app_config
 #from .models import db
 #from flask_migrate import Migrate
 #from .shared import returnCodes
 #from .views.LugaresView import lugares_api as lugares_blueprint
 #from views.LugaresView import nsLugares as nsLugares
-from .controllers.lugares import nsLugares
+from .controllers.LugaresView import nsLugares
 from flask_restx import Api, fields, Resource
 from flask_sqlalchemy import SQLAlchemy
 
