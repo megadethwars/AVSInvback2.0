@@ -4,6 +4,7 @@ from marshmallow import ValidationError
 from ..shared import returnCodes
 from flask_restx import Api,fields,Resource
 from ..models.LugaresModel import LugaresSchema,LugaresSchemaUpdate,LugaresModel
+from ..models import db
 app = Flask(__name__)
 lugares_api = Blueprint("lugares_api", __name__)
 lugares_schema = LugaresSchema()
@@ -34,6 +35,40 @@ LugaresPatchApi = nsLugares.model(
     }
 )
 
+def createLugar(req_data, listaObjetosCreados, listaErrores):
+    #app.logger.info("Creando catalogo" + json.dumps(req_data))
+    data = None
+    try:
+        data = lugares_schema.load(req_data)
+    except ValidationError as err:
+        #error = returnCodes.custom_response(None, 400, "TPM-2", str(err)).json
+        error = returnCodes.partial_response("TPM-2",str(err))
+        listaErrores.append(error)
+        return returnCodes.custom_response(None, 400, "TPM-2", str(err))
+
+    # Aquí hacemos las validaciones para ver si el catalogo de negocio ya existe previamente
+    lugar_in_db = LugaresModel.get_lugar_by_nombre(data.get("lugar"))
+    if lugar_in_db:
+        #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+        error = returnCodes.partial_response("TPM-5","",data.get("lugar"))
+        listaErrores.append(error)
+        return returnCodes.custom_response(None, 409, "TPM-5", "", data.get("lugar"))
+
+    lugar = LugaresModel(data)
+
+    try:
+        lugar.save()
+    except Exception as err:
+        error = returnCodes.custom_response(None, 500, "TPM-7", str(err)).json
+        error = returnCodes.partial_response("TPM-7",str(err))
+        #error="Error al intentar dar de alta el registro "+data.get("nombre")+", "+error["message"]
+        listaErrores.append(error)
+        db.session.rollback()
+        return returnCodes.custom_response(None, 500, "TPM-7", str(err))
+    
+    serialized_lugar = lugares_schema.dump(lugar)
+    listaObjetosCreados.append(serialized_lugar)
+    return returnCodes.custom_response(serialized_lugar, 201, "TPM-1")
 
 @nsLugares.route("")
 class LugaresList(Resource):
@@ -45,3 +80,30 @@ class LugaresList(Resource):
         #return catalogos
         serialized_lugares = lugares_schema.dump(lugares, many=True)
         return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
+
+    
+    @nsLugares.doc("Crear lugares")
+    @nsLugares.expect(LugaresModelListApi)
+    @nsLugares.response(201, "created")
+    def post(self):
+        req_data = request.get_json().get("lugares")
+        if(not req_data):
+            return returnCodes.custom_response(None, 400, "TPM-2")
+        try:
+            data = lugares_schema.load(req_data, many=True)
+        except ValidationError as err:    
+            return returnCodes.custom_response(None, 400, "TPM-2", str(err))
+        
+        listaObjetosCreados = list()
+        listaErrores = list()
+        
+        for dataItem in data:
+            createLugar(dataItem, listaObjetosCreados, listaErrores)
+        
+        if(len(listaObjetosCreados)>0):
+            if(len(listaErrores)==0):
+                return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-8")
+            else:
+                return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-20", "",listaErrores)
+        else:
+            return returnCodes.custom_response(None, 409, "TPM-20","", listaErrores)
