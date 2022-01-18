@@ -3,8 +3,8 @@ import random
 from flask import Flask, current_app, render_template
 from flask_cors import CORS
 from .config import app_config
-#from .models import db
-#from flask_migrate import Migrate
+from .models import db
+from flask_migrate import Migrate
 #from .shared import returnCodes
 #from .views.LugaresView import lugares_api as lugares_blueprint
 #from views.LugaresView import nsLugares as nsLugares
@@ -24,11 +24,11 @@ def create_app(env_name):
     #app.config.from_object(app_config[env_name])
 
 
-    #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:neology@localhost:3306/avsinventario'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pymssql://forrerunner97:Asterisco97@inventarioavs1.database.windows.net/avsInventory'
 
-    #db.init_app(app)
+    db.init_app(app)
 
-    #migrate = Migrate(app, db)
+    migrate = Migrate(app, db)
 
     #app.register_blueprint(roles_blueprint, url_prefix="/api/v1/")
     #app.register_blueprint(lugares_blueprint, url_prefix="/api/v1/")

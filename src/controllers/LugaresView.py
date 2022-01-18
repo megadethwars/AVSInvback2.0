@@ -3,10 +3,11 @@ from marshmallow import ValidationError
 
 from ..shared import returnCodes
 from flask_restx import Api,fields,Resource
-
+from ..models.LugaresModel import LugaresSchema,LugaresSchemaUpdate,LugaresModel
 app = Flask(__name__)
 lugares_api = Blueprint("lugares_api", __name__)
-
+lugares_schema = LugaresSchema()
+lugares_schema_update = LugaresSchemaUpdate()
 api = Api(lugares_api)
 
 nsLugares = api.namespace("lugares", description="API operations for lugares")
@@ -40,14 +41,7 @@ class LugaresList(Resource):
     def get(self):
         """List all lugares"""
         print('getting')
-        
+        lugares = LugaresModel.get_all_lugares()
         #return catalogos
-        serialized_lugares = [
-            {
-                "id":1
-            },{
-                "id":2
-            }
-        ]
-        #return "OK"
+        serialized_lugares = lugares_schema.dump(lugares, many=True)
         return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")

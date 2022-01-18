@@ -4,3 +4,6 @@ flask-restx==0.4.0
 Flask-SQLAlchemy==2.5.1
 marshmallow==3.12.2
 Flask-Bcrypt==0.7.1
+Flask-Migrate==3.0.1
+PyMySQL==1.0.2
+pymssql==2.2.3
