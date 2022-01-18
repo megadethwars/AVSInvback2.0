@@ -107,3 +107,41 @@ class LugaresList(Resource):
                 return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-20", "",listaErrores)
         else:
             return returnCodes.custom_response(None, 409, "TPM-20","", listaErrores)
+
+    
+    @nsLugares.doc("actualizar lugar")
+    @nsLugares.expect(LugaresPatchApi)
+    def patch(self):
+        req_data = request.get_json()
+        data = None
+        try:
+            data = lugares_schema_update.load(req_data, partial=True)
+        except ValidationError as err:
+            return returnCodes.custom_response(None, 400, "TPM-2", str(err))
+
+        lugar = LugaresModel.get_one_lugar(data.get("id"))
+        if not lugar:
+            
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        try:
+            lugar.update(data)
+        except Exception as err:
+            return returnCodes.custom_response(None, 500, "TPM-7", str(err))
+
+        serialized_lugar = lugares_schema.dump(lugar)
+        return returnCodes.custom_response(serialized_lugar, 200, "TPM-6")
+
+@nsLugares.route("/<int:id>")
+@nsLugares.param("id", "The id identifier")
+@nsLugares.response(404, "lugar no encontrado")
+class OneLugar(Resource):
+    @nsLugares.doc("obtener un lugar")
+    def get(self, id):
+       
+        lugar = LugaresModel.get_one_lugar(id)
+        if not lugar:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        serialized_lugar = lugares_schema.dump(lugar)
+        return returnCodes.custom_response(serialized_lugar, 200, "TPM-3")
