@@ -1,0 +1,199 @@
+# /src/views/GiroView
+
+from flask import Flask, request, json, Response, Blueprint, g
+from marshmallow import ValidationError
+from ..models.UsuariosModel import UsuariosModel, UsuariosSchema,UsuariosSchemaUpdate
+from ..models.RolesModel import RolesModel
+from ..models.EstatusUsuariosModel import EstatusUsuariosModel
+from ..models import db
+from ..shared import returnCodes
+from flask_restx import Api,fields,Resource
+
+app = Flask(__name__)
+Usuario_api = Blueprint("users_api", __name__)
+usuarios_schema = UsuariosSchema()
+usuarios_schema_update = UsuariosSchemaUpdate()
+api = Api(Usuario_api)
+
+nsUsuarios = api.namespace("users", description="API operations for usuarios")
+
+UsersModelApi = nsUsuarios.model(
+    "usuarios",
+    {
+     
+        "nombre": fields.String(required=True, description="nombre"),
+        "username":fields.String(required=True, description="username"),
+        "apellidoPaterno":fields.String(required=True, description="apellidoPaterno"),
+        "apellidoMaterno":fields.String(required=True, description="apellidoMaterno"),
+        "password":fields.String(required=True, description="password"),
+        "telefono":fields.String(required=True, description="telefono"),
+        "correo":fields.String(required=True, description="correo"),
+        "foto":fields.String( description="foto"),
+        "rolId":fields.Integer(required=True, description="rolId"),
+        "statusId":fields.Integer(required=True, description="statusId")
+    }
+)
+
+UsersModelListApi = nsUsuarios.model('usersList', {
+    'userslist': fields.List(fields.Nested(UsersModelApi)),
+})
+
+UsersPatchApi = nsUsuarios.model(
+    "users",
+    {
+        "id": fields.Integer(required=True, description="identificador"),
+        "nombre": fields.String(required=True, description="nombre"),
+        "username":fields.String(required=True, description="username"),
+        "apellidoPaterno":fields.String(required=True, description="apellidoPaterno"),
+        "apellidoMaterno":fields.String(required=True, description="apellidoMaterno"),
+        "password":fields.String(required=True, description="password"),
+        "telefono":fields.String(required=True, description="telefono"),
+        "correo":fields.String(required=True, description="correo"),
+        "foto":fields.String( description="foto"),
+        "rolId":fields.Integer(required=True, description="rolId"),
+        "statusId":fields.Integer(required=True, description="statusId")
+        
+    }
+)
+
+def createUsers(req_data, listaObjetosCreados, listaErrores):
+    #app.logger.info("Creando catalogo" + json.dumps(req_data))
+    data = None
+    try:
+        data = usuarios_schema.load(req_data)
+    except ValidationError as err:
+        #error = returnCodes.custom_response(None, 400, "TPM-2", str(err)).json
+        error = returnCodes.partial_response("TPM-2",str(err))
+        listaErrores.append(error)
+        return returnCodes.custom_response(None, 400, "TPM-2", str(err))
+
+    # Aquí hacemos las validaciones para ver si el catalogo de negocio ya existe previamente
+    user_in_db = UsuariosModel.get_users_by_username(data.get("username"))
+    if user_in_db:
+        #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+        error = returnCodes.partial_response("TPM-5","",data.get("username"))
+        listaErrores.append(error)
+        return returnCodes.custom_response(None, 409, "TPM-5", "", data.get("username"))
+
+    rol_in_db = RolesModel.get_one_rol(data.get("rolId"))
+    if not rol_in_db:
+        #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+        error = returnCodes.partial_response("TPM-4","",data.get("rolId"))
+        listaErrores.append(error)
+        return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("rolId"))
+
+    status_in_db = EstatusUsuariosModel.get_one_status(data.get("statusId"))
+    if not status_in_db:
+        #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+        error = returnCodes.partial_response("TPM-4","",data.get("statusId"))
+        listaErrores.append(error)
+        return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("statusId"))
+
+    user = UsuariosModel(data)
+
+    try:
+        user.save()
+    except Exception as err:
+        error = returnCodes.custom_response(None, 500, "TPM-7", str(err)).json
+        error = returnCodes.partial_response("TPM-7",str(err))
+        #error="Error al intentar dar de alta el registro "+data.get("nombre")+", "+error["message"]
+        listaErrores.append(error)
+        db.session.rollback()
+        return returnCodes.custom_response(None, 500, "TPM-7", str(err))
+    
+    serialized_user = usuarios_schema.dump(user)
+    listaObjetosCreados.append(serialized_user)
+    return returnCodes.custom_response(serialized_user, 201, "TPM-1")
+
+@nsUsuarios.route("")
+class UsersList(Resource):
+    @nsUsuarios.doc("lista de  usuarios")
+    def get(self):
+        """List all status"""
+        print('getting')
+        users = UsuariosModel.get_all_users()
+        #return catalogos
+        serialized_users = usuarios_schema.dump(users, many=True)
+        return returnCodes.custom_response(serialized_users, 200, "TPM-3")
+
+    @nsUsuarios.doc("Crear usuario")
+    @nsUsuarios.expect(UsersModelApi)
+    @nsUsuarios.response(201, "created")
+    def post(self):
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+
+        req_data = request.json
+        if(not req_data):
+            return returnCodes.custom_response(None, 400, "TPM-2")
+        try:
+            data = usuarios_schema.load(req_data)
+        except ValidationError as err:    
+            return returnCodes.custom_response(None, 400, "TPM-2", str(err))
+        
+        listaObjetosCreados = list()
+        listaErrores = list()
+        
+       
+        createUsers(data, listaObjetosCreados, listaErrores)
+        
+        if(len(listaObjetosCreados)>0):
+            if(len(listaErrores)==0):
+                return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-8")
+            else:
+                return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-20", "",listaErrores)
+        else:
+            return returnCodes.custom_response(None, 409, "TPM-20","", listaErrores)
+    
+    @nsUsuarios.doc("actualizar usuario")
+    @nsUsuarios.expect(UsersPatchApi)
+    def patch(self):
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+        req_data = request.json
+        data = None
+        if(not req_data):
+            return returnCodes.custom_response(None, 400, "TPM-2")
+        try:
+            data = usuarios_schema_update.load(req_data, partial=True)
+        except ValidationError as err:
+            return returnCodes.custom_response(None, 400, "TPM-2", str(err))
+
+        user = UsuariosModel.get_one_users(data.get("id"))
+        if not user:
+            
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        rol_in_db = RolesModel.get_one_rol(data.get("rolId"))
+        if not rol_in_db:
+            #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+            
+            return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("rolId"))
+
+        status_in_db = EstatusUsuariosModel.get_one_status(data.get("statusId"))
+        if not status_in_db:
+            #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+            
+            return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("statusId"))
+
+        try:
+            user.update(data)
+        except Exception as err:
+            return returnCodes.custom_response(None, 500, "TPM-7", str(err))
+
+        serialized_status = usuarios_schema.dump(user)
+        return returnCodes.custom_response(serialized_status, 200, "TPM-6")
+
+@nsUsuarios.route("/<int:id>")
+@nsUsuarios.param("id", "The id identifier")
+@nsUsuarios.response(404, "usuario no encontrado")
+class OneCatalogo(Resource):
+    @nsUsuarios.doc("obtener un usuario")
+    def get(self, id):
+       
+        rol = UsuariosModel.get_one_users(id)
+        if not rol:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        serialized_user = usuarios_schema.dump(rol)
+        return returnCodes.custom_response(serialized_user, 200, "TPM-3")

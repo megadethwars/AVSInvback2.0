@@ -81,22 +81,25 @@ class RolesList(Resource):
         return returnCodes.custom_response(serialized_roles, 200, "TPM-3")
 
     @nsRoles.doc("Crear catalogo")
-    @nsRoles.expect(RolesModelListApi)
+    @nsRoles.expect(RolesModelApi)
     @nsRoles.response(201, "created")
     def post(self):
-        req_data = request.get_json().get("roles")
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+
+        req_data = request.json
         if(not req_data):
             return returnCodes.custom_response(None, 400, "TPM-2")
         try:
-            data = roles_schema.load(req_data, many=True)
+            data = roles_schema.load(req_data)
         except ValidationError as err:    
             return returnCodes.custom_response(None, 400, "TPM-2", str(err))
         
         listaObjetosCreados = list()
         listaErrores = list()
         
-        for dataItem in data:
-            createRol(dataItem, listaObjetosCreados, listaErrores)
+        
+        createRol(data, listaObjetosCreados, listaErrores)
         
         if(len(listaObjetosCreados)>0):
             if(len(listaErrores)==0):

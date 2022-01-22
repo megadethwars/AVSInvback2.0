@@ -83,22 +83,25 @@ class LugaresList(Resource):
 
     
     @nsLugares.doc("Crear lugares")
-    @nsLugares.expect(LugaresModelListApi)
+    @nsLugares.expect(LugaresModelApi)
     @nsLugares.response(201, "created")
     def post(self):
-        req_data = request.get_json().get("lugares")
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+
+        req_data = request.json
         if(not req_data):
             return returnCodes.custom_response(None, 400, "TPM-2")
         try:
-            data = lugares_schema.load(req_data, many=True)
+            data = lugares_schema.load(req_data)
         except ValidationError as err:    
             return returnCodes.custom_response(None, 400, "TPM-2", str(err))
         
         listaObjetosCreados = list()
         listaErrores = list()
         
-        for dataItem in data:
-            createLugar(dataItem, listaObjetosCreados, listaErrores)
+      
+        createLugar(data, listaObjetosCreados, listaErrores)
         
         if(len(listaObjetosCreados)>0):
             if(len(listaErrores)==0):

@@ -82,22 +82,26 @@ class RolesList(Resource):
         return returnCodes.custom_response(serialized_status, 200, "TPM-3")
 
     @nsStatusUsuarios.doc("Crear status")
-    @nsStatusUsuarios.expect(StatusModelListApi)
+    @nsStatusUsuarios.expect(StatusModelApi)
     @nsStatusUsuarios.response(201, "created")
     def post(self):
-        req_data = request.get_json().get("status")
+        
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+
+        req_data = request.json
         if(not req_data):
             return returnCodes.custom_response(None, 400, "TPM-2")
         try:
-            data = estatus_schema.load(req_data, many=True)
+            data = estatus_schema.load(req_data)
         except ValidationError as err:    
             return returnCodes.custom_response(None, 400, "TPM-2", str(err))
         
         listaObjetosCreados = list()
         listaErrores = list()
         
-        for dataItem in data:
-            createStatus(dataItem, listaObjetosCreados, listaErrores)
+        
+        createStatus(data, listaObjetosCreados, listaErrores)
         
         if(len(listaObjetosCreados)>0):
             if(len(listaErrores)==0):
@@ -110,6 +114,9 @@ class RolesList(Resource):
     @nsStatusUsuarios.doc("actualizar estatus")
     @nsStatusUsuarios.expect(StatusPatchApi)
     def patch(self):
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+
         req_data = request.get_json()
         data = None
         if(not req_data):
