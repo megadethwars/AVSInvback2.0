@@ -163,18 +163,19 @@ class UsersList(Resource):
         if not user:
             
             return returnCodes.custom_response(None, 404, "TPM-4")
+        if "rolId" in data:
+            rol_in_db = RolesModel.get_one_rol(data.get("rolId"))
+            if not rol_in_db:
+                #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+                
+                return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("rolId"))
 
-        rol_in_db = RolesModel.get_one_rol(data.get("rolId"))
-        if not rol_in_db:
-            #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
-            
-            return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("rolId"))
-
-        status_in_db = EstatusUsuariosModel.get_one_status(data.get("statusId"))
-        if not status_in_db:
-            #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
-            
-            return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("statusId"))
+        if "statusId" in data:
+            status_in_db = EstatusUsuariosModel.get_one_status(data.get("statusId"))
+            if not status_in_db:
+                #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+                
+                return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("statusId"))
 
         try:
             user.update(data)

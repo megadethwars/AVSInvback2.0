@@ -72,7 +72,7 @@ class UsuariosModel(db.Model):
         return UsuariosModel.query.get(id)
 
     @staticmethod
-    def get_status_by_nombre(value):
+    def get_users_by_nombre(value):
         return UsuariosModel.query.filter_by(nombre=value).first()
 
     @staticmethod
@@ -106,15 +106,15 @@ class UsuariosSchemaUpdate(Schema):
     Catalogo Schema
     """
     id = fields.Int(required=True)
-    nombre = fields.Str(required=True, validate=[validate.Length(max=45)])
-    username = fields.Str(required=True, validate=[validate.Length(max=45)])
-    apellidoPaterno = fields.Str(required=True, validate=[validate.Length(max=45)])
-    apellidoMaterno = fields.Str(required=True, validate=[validate.Length(max=45)])
-    password = fields.Str(required=True)
-    telefono = fields.Str(required=True, validate=[validate.Length(max=45)])
-    correo =fields.Str(required=True, validate=[validate.Length(max=100)])
+    nombre = fields.Str(validate=[validate.Length(max=45)])
+    username = fields.Str(validate=[validate.Length(max=45)])
+    apellidoPaterno = fields.Str(validate=[validate.Length(max=45)])
+    apellidoMaterno = fields.Str(validate=[validate.Length(max=45)])
+    password = fields.Str()
+    telefono = fields.Str( validate=[validate.Length(max=45)])
+    correo =fields.Str( validate=[validate.Length(max=100)])
     foto =fields.Str()
-    rolId = fields.Integer(required=True)
-    statusId = fields.Integer(required=True)
+    rolId = fields.Integer()
+    statusId = fields.Integer()
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
