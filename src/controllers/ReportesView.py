@@ -170,7 +170,7 @@ class ReportesList(Resource):
         except ValidationError as err:
             return returnCodes.custom_response(None, 400, "TPM-2", str(err))
 
-        report = ReportesModel.get_one_device(data.get("id"))
+        report = ReportesModel.get_one_report(data.get("id"))
         if not report:
             return returnCodes.custom_response(None, 404, "TPM-4","el reporte no existe")
         if "dispositivoId" in data:
@@ -181,7 +181,7 @@ class ReportesList(Resource):
                 return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("dispositivoId"))
 
         if "usuarioId" in data:
-            user_in_db = UsuariosModel.get_one_device(data.get("usuarioId"))
+            user_in_db = UsuariosModel.get_one_users(data.get("usuarioId"))
             if not user_in_db:
                 #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
                 
@@ -206,7 +206,7 @@ class OneReport(Resource):
         if not report:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
-        serialized_report = reportes_schema.dump(rol)
+        serialized_report = reportes_schema.dump(report)
         return returnCodes.custom_response(serialized_report, 200, "TPM-3")
 
 @nsReports.route("/query")
