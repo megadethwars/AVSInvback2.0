@@ -116,7 +116,7 @@ def createDevices(req_data, listaObjetosCreados, listaErrores):
         #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
         error = returnCodes.partial_response("TPM-5","",data.get("codigo"))
         listaErrores.append(error)
-        return returnCodes.custom_response(None, 409, "TPM-5", "", data.get("username"))
+        return returnCodes.custom_response(None, 409, "TPM-5", "", data.get("codigo"))
 
     lugar_in_db = LugaresModel.get_one_lugar(data.get("lugarId"))
     if not lugar_in_db:
