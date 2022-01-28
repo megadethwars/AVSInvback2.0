@@ -74,12 +74,17 @@ def createLugar(req_data, listaObjetosCreados, listaErrores):
 class LugaresList(Resource):
     @nsLugares.doc("lista de lugares")
     def get(self):
-        """List all lugares"""
-        print('getting')
-        lugares = LugaresModel.get_all_lugares()
-        #return catalogos
-        serialized_lugares = lugares_schema.dump(lugares, many=True)
-        return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
+        try:
+
+            """List all lugares"""
+            print('getting')
+            lugares = LugaresModel.get_all_lugares()
+            #return catalogos
+            serialized_lugares = lugares_schema.dump(lugares, many=True)
+            return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
+        except Exception as ex:
+            return returnCodes.custom_response(serialized_lugares, 200, "TPM-7",str(ex))
+
 
     
     @nsLugares.doc("Crear lugares")
@@ -115,6 +120,10 @@ class LugaresList(Resource):
     @nsLugares.doc("actualizar lugar")
     @nsLugares.expect(LugaresPatchApi)
     def patch(self):
+
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+
         req_data = request.get_json()
         data = None
         try:

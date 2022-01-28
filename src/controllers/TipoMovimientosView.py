@@ -1,44 +1,49 @@
-# /src/views/GiroView
-
+from telnetlib import NAMS
 from flask import Flask, request, json, Response, Blueprint, g
 from marshmallow import ValidationError
-from ..models.RolesModel import RolesModel, RolesSchema
-from ..models import db
+
+
+
 from ..shared import returnCodes
 from flask_restx import Api,fields,Resource
+from ..models.TipoMovimientosModel import TipoMoveModel,TipoMoveSchema,TipoMoveSchemaUpdate
+from ..models import db
 
 app = Flask(__name__)
-roles_api = Blueprint("roles_api", __name__)
-roles_schema = RolesSchema()
-api = Api(roles_api)
+tipomoves_api = Blueprint("tipomoves_api", __name__)
+lugares_schema = TipoMoveSchema()
+lugares_schema_update = TipoMoveSchemaUpdate()
+api = Api(tipomoves_api)
 
-nsRoles = api.namespace("roles", description="API operations for roles")
+nstipomoves = api.namespace("tipomovimientos", description="API operations for tipos de movimientos")
 
-RolesModelApi = nsRoles.model(
-    "RolesModel",
+tiposModelApi = nstipomoves.model(
+    "tipos",
     {
-        "nombre": fields.String(required=True, description="nombre")
+        "tipo": fields.String(required=True, description="tipo"),
+   
     }
 )
 
-RolesModelListApi = nsRoles.model('rolesList', {
-    'roles': fields.List(fields.Nested(RolesModelApi)),
+tiposModelListApi = nstipomoves.model('tiposList', {
+    'tipos': fields.List(fields.Nested(tiposModelApi)),
 })
 
-RolesPatchApi = nsRoles.model(
-    "CatalogoPatchModel",
+LugaresPatchApi = nstipomoves.model(
+    "LugarPatchModel",
     {
         "id": fields.Integer(required=True, description="identificador"),
-        "nombre": fields.String(required=True, description="nombre"),
+        "tipo": fields.String(description="tipo")
+  
         
     }
 )
 
-def createRol(req_data, listaObjetosCreados, listaErrores):
+def createTipo(req_data, listaObjetosCreados, listaErrores):
     #app.logger.info("Creando catalogo" + json.dumps(req_data))
     data = None
     try:
-        data = roles_schema.load(req_data)
+        data = lugares_schema.load(req_data)
     except ValidationError as err:
         #error = returnCodes.custom_response(None, 400, "TPM-2", str(err)).json
         error = returnCodes.partial_response("TPM-2",str(err))
@@ -46,17 +51,17 @@ def createRol(req_data, listaObjetosCreados, listaErrores):
         return returnCodes.custom_response(None, 400, "TPM-2", str(err))
 
     # Aquí hacemos las validaciones para ver si el catalogo de negocio ya existe previamente
-    rol_in_db = RolesModel.get_rol_by_nombre(data.get("nombre"))
-    if rol_in_db:
+    lugar_in_db = TipoMoveModel.get_tipo_by_nombre(data.get("lugar"))
+    if lugar_in_db:
         #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
-        error = returnCodes.partial_response("TPM-5","",data.get("nombre"))
+        error = returnCodes.partial_response("TPM-5","",data.get("lugar"))
         listaErrores.append(error)
-        return returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre"))
+        return returnCodes.custom_response(None, 409, "TPM-5", "", data.get("lugar"))
 
-    rol = RolesModel(data)
+    lugar = TipoMoveModel(data)
 
     try:
-        rol.save()
+        lugar.save()
     except Exception as err:
         error = returnCodes.custom_response(None, 500, "TPM-7", str(err)).json
         error = returnCodes.partial_response("TPM-7",str(err))
@@ -65,24 +70,25 @@ def createRol(req_data, listaObjetosCreados, listaErrores):
         db.session.rollback()
         return returnCodes.custom_response(None, 500, "TPM-7", str(err))
     
-    serialized_catalogo = roles_schema.dump(rol)
-    listaObjetosCreados.append(serialized_catalogo)
-    return returnCodes.custom_response(serialized_catalogo, 201, "TPM-1")
+    serialized_lugar = lugares_schema.dump(lugar)
+    listaObjetosCreados.append(serialized_lugar)
+    return returnCodes.custom_response(serialized_lugar, 201, "TPM-1")
 
-@nsRoles.route("")
-class RolesList(Resource):
-    @nsRoles.doc("lista de catalogos")
+@nstipomoves.route("")
+class TiposList(Resource):
+    @nstipomoves.doc("lista de tipos")
     def get(self):
-        """List all catalogos"""
+        """List all lugares"""
         print('getting')
-        roles = RolesModel.get_all_roles()
+        lugares = TipoMoveModel.get_all_tipos()
         #return catalogos
-        serialized_roles = roles_schema.dump(roles, many=True)
-        return returnCodes.custom_response(serialized_roles, 200, "TPM-3")
+        serialized_lugares = lugares_schema.dump(lugares, many=True)
+        return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
 
-    @nsRoles.doc("Crear catalogo")
-    @nsRoles.expect(RolesModelApi)
-    @nsRoles.response(201, "created")
+    
+    @nstipomoves.doc("Crear tipos")
+    @nstipomoves.expect(tiposModelApi)
+    @nstipomoves.response(201, "created")
     def post(self):
         if request.is_json is False:
             return returnCodes.custom_response(None, 400, "TPM-2")
@@ -91,15 +97,15 @@ class RolesList(Resource):
         if(not req_data):
             return returnCodes.custom_response(None, 400, "TPM-2")
         try:
-            data = roles_schema.load(req_data)
+            data = lugares_schema.load(req_data)
         except ValidationError as err:    
             return returnCodes.custom_response(None, 400, "TPM-2", str(err))
         
         listaObjetosCreados = list()
         listaErrores = list()
         
-        
-        createRol(data, listaObjetosCreados, listaErrores)
+      
+        createTipo(data, listaObjetosCreados, listaErrores)
         
         if(len(listaObjetosCreados)>0):
             if(len(listaErrores)==0):
@@ -108,43 +114,45 @@ class RolesList(Resource):
                 return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-20", "",listaErrores)
         else:
             return returnCodes.custom_response(None, 409, "TPM-20","", listaErrores)
+
     
-    @nsRoles.doc("actualizar catalogo")
-    @nsRoles.expect(RolesPatchApi)
+    @nstipomoves.doc("actualizar tipo movimiento")
+    @nstipomoves.expect(LugaresPatchApi)
     def patch(self):
+
         if request.is_json is False:
             return returnCodes.custom_response(None, 400, "TPM-2")
 
         req_data = request.get_json()
         data = None
         try:
-            data = roles_schema.load(req_data, partial=True)
+            data = lugares_schema_update.load(req_data, partial=True)
         except ValidationError as err:
             return returnCodes.custom_response(None, 400, "TPM-2", str(err))
 
-        rol = RolesModel.get_one_rol(data.get("id"))
-        if not rol:
+        move = TipoMoveModel.get_one_tipo(data.get("id"))
+        if not move:
             
             return returnCodes.custom_response(None, 404, "TPM-4")
 
         try:
-            rol.update(data)
+            move.update(data)
         except Exception as err:
             return returnCodes.custom_response(None, 500, "TPM-7", str(err))
 
-        serialized_rol = roles_schema.dump(rol)
-        return returnCodes.custom_response(serialized_rol, 200, "TPM-6")
+        serialized_lugar = lugares_schema.dump(move)
+        return returnCodes.custom_response(serialized_lugar, 200, "TPM-6")
 
-@nsRoles.route("/<int:id>")
-@nsRoles.param("id", "The id identifier")
-@nsRoles.response(404, "rol no encontrado")
-class OneCatalogo(Resource):
-    @nsRoles.doc("obtener un rol")
+@nstipomoves.route("/<int:id>")
+@nstipomoves.param("id", "The id identifier")
+@nstipomoves.response(404, "tipo movimiento no encontrado")
+class OneLugar(Resource):
+    @nstipomoves.doc("obtener un tipo movimiento")
     def get(self, id):
        
-        rol = RolesModel.get_one_rol(id)
-        if not rol:
+        move = TipoMoveModel.get_one_tipo(id)
+        if not move:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
-        serialized_rol = roles_schema.dump(rol)
-        return returnCodes.custom_response(serialized_rol, 200, "TPM-3")
+        serialized_lugar = lugares_schema.dump(move)
+        return returnCodes.custom_response(serialized_lugar, 200, "TPM-3")
