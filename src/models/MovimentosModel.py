@@ -16,6 +16,7 @@ class MovimientosModel(db.Model):
     __tablename__ = 'invMovimientos'
 
     id = db.Column(db.Integer, primary_key=True)
+    idMovimiento = db.Column(db.Text)
     dispositivoId = db.Column(
         db.Integer,db.ForeignKey("invDispositivos.id"),nullable=False
     )
@@ -23,6 +24,9 @@ class MovimientosModel(db.Model):
         db.Integer,db.ForeignKey("invUsuarios.id"),nullable=False
     )
     
+    tipoMovId = db.Column(
+        db.Integer,db.ForeignKey("invTipoMoves.id"),nullable=False
+    )
     comentarios = db.Column(db.Text)
     foto = db.Column(db.Text)
     fechaAlta = db.Column(db.DateTime)
@@ -56,19 +60,19 @@ class MovimientosModel(db.Model):
         db.session.commit()
 
     @staticmethod
-    def get_all_reportes(offset=0,limit=10):
+    def get_all_movimientos(offset=0,limit=10):
         return MovimientosModel.query.order_by(MovimientosModel.id).offset(offset).limit(limit).all()
 
 
     @staticmethod
-    def get_one_report(id):
+    def get_one_movimiento(id):
         return MovimientosModel.query.get(id)
 
 
     @staticmethod
-    def get_reportes_by_query(jsonFiltros,offset=1,limit=5):
+    def get_movimientos_by_query(jsonFiltros,offset=1,limit=5):
         #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
-        return MovimientosModel.query.filter_by(**jsonFiltros).order_by(ReportesModel.id).offset(offset).limit(limit).all()
+        return MovimientosModel.query.filter_by(**jsonFiltros).order_by(MovimientosModel.id).offset(offset).limit(limit).all()
 
 
         if "fechaAltaRangoInicio" in jsonFiltros and "fechaAltaRangoFin" in jsonFiltros:
