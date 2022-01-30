@@ -83,7 +83,7 @@ class LugaresList(Resource):
             serialized_lugares = lugares_schema.dump(lugares, many=True)
             return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
         except Exception as ex:
-            return returnCodes.custom_response(serialized_lugares, 200, "TPM-7",str(ex))
+            return returnCodes.custom_response(serialized_lugares, 500, "TPM-7",str(ex))
 
 
     

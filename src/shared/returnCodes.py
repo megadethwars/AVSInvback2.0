@@ -30,8 +30,9 @@ def partial_response(app_code,message="",name="",id=""):
         message = app_codes[app_code]
     
     return {
-            app_code:message,
-            "name":name,
+            app_code:app_code,
+            "message":message,
+            "errors":name,
             "id":id
             }
 
