@@ -15,6 +15,7 @@ from .controllers.UsuariosView import nsUsuarios
 from .controllers.DispositivosView import nsDevices
 from .controllers.ReportesView import nsReports
 from .controllers.TipoMovimientosView import nstipomoves
+from .controllers.MovimientosView import nsMovements
 from flask_restx import Api, fields, Resource
 from flask_sqlalchemy import SQLAlchemy
 
@@ -49,6 +50,7 @@ def create_app(env_name):
     api.add_namespace(ns=nsDevices,path="/api/v1/dispositivos")
     api.add_namespace(ns=nsReports,path="/api/v1/reportes")
     api.add_namespace(ns=nstipomoves,path="/api/v1/tipomoves")
+    api.add_namespace(ns=nsMovements,path="/api/v1/movimientos")
     #@app.errorhandler(404) 
     #def not_found(e):
     #    return returnCodes.custom_response(None, 404, 4041, "TPM-4")

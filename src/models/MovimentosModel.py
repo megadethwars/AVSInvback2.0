@@ -27,8 +27,12 @@ class MovimientosModel(db.Model):
     tipoMovId = db.Column(
         db.Integer,db.ForeignKey("invTipoMoves.id"),nullable=False
     )
+    LugarId = db.Column(
+        db.Integer,db.ForeignKey("invLugares.id"),nullable=False
+    )
     comentarios = db.Column(db.Text)
     foto = db.Column(db.Text)
+    foto2 = db.Column(db.Text)
     fechaAlta = db.Column(db.DateTime)
     fechaUltimaModificacion = db.Column(db.DateTime)
 
@@ -36,17 +40,25 @@ class MovimientosModel(db.Model):
         """
         Class constructor
         """
+        self.idMovimiento = data.get("idMovimiento")
         self.dispositivoId = data.get("dispositivoId")
         self.usuarioId = data.get("usuarioId")
+        self.tipoMovId = data.get("tipoMovId")
         self.comentarios = data.get("comentarios")
         self.foto = data.get("foto")
-        
-
+        self.foto2 = data.get("foto2")
+        self.LugarId = data.get("LugarId")
         self.fechaAlta = datetime.datetime.utcnow()
         self.fechaUltimaModificacion = datetime.datetime.utcnow()
 
     def save(self):
         db.session.add(self)
+        db.session.commit()
+
+
+    @staticmethod
+    def guardar_masivo(listMovements):
+        db.session.bulk_save_objects(listMovements)
         db.session.commit()
 
     def update(self, data):
@@ -102,11 +114,14 @@ class MovimientosSchema(Schema):
     id = fields.Int()
     dispositivoId = fields.Integer(required=True)
     usuarioId = fields.Integer(required=True)
-    comentarios = fields.Str()
-    foto = fields.Str( validate=[validate.Length(max=500)])
-
+    idMovimiento = fields.Integer(required=True)  
+    tipoMovId = fields.Integer(required=True)
+    comentarios =fields.Str( validate=[validate.Length(max=500)])
+    foto = fields.Str()
+    foto2 = fields.Str()
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
+    LugarId = fields.Integer(required=True)
 
 
 class MovimientosSchemaUpdate(Schema):
@@ -114,10 +129,14 @@ class MovimientosSchemaUpdate(Schema):
     Catalogo Schema
     """
     id = fields.Int(required=True)
-    dispositivoId = fields.Integer()
-    usuarioId = fields.Integer()
-    comentarios = fields.Str()
-    foto = fields.Str( validate=[validate.Length(max=500)])
+    dispositivoId = fields.Integer(required=True)
+    usuarioId = fields.Integer(required=True)
+    idMovimiento = fields.Integer(required=True)
+    tipoMovId = fields.Integer(required=True)
+    comentarios =fields.Str( validate=[validate.Length(max=500)])
+    foto = fields.Str()
+    foto2 = fields.Str()
+    LugarId = fields.Integer(required=True)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
@@ -129,5 +148,6 @@ class MovimientosSchemaQuery(Schema):
     id = fields.Int()
     dispositivoId = fields.Integer()
     usuarioId = fields.Integer()
-    comentarios = fields.Str()
-    foto = fields.Str( validate=[validate.Length(max=500)])
+    idMovimiento = fields.Integer(required=True)
+    tipoMovId = fields.Integer(required=True)
+    LugarId = fields.Integer(required=True)

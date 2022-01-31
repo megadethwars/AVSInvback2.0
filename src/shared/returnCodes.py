@@ -10,22 +10,19 @@ app_codes = {
     "TPM-6": "Recurso actualizado correctamente",
     "TPM-7": "Error interno del servidor",
     "TPM-8": "Recursos creados exitosamente",
-    "TPM-9": "La cuenta se ha validado correctamente",
-    "TPM-10": "El beneficiario de la cuenta no coincide con el nombre del comisionista",
-    "TPM-11": "No se pudo crear el lego de persona en la BUP",
-    "TPM-12": "Se requieren al menos los datos mínimos para poder crear la persona en la BUP",
-    "TPM-13": "Ocurrió un error al crear el registro en el lego de datos mínimos en la BUP",
-    "TPM-14": "Ocurrió un error al crear el registro en el lego de datos mínimos persona moral en la BUP",
-    "TPM-15": "Ocurrió un error al crear el registro en el lego de datos básicos en la BUP",
-    "TPM-16": "Ocurrió un error al crear el registro en el lego de datos básicos persona moral en la BUP",
-    "TPM-17": "Ocurrió un error al crear el registro en el lego de datos de contacto en la BUP",
-    "TPM-18": "Ocurrió un error al crear el registro en el lego de datos complemento yastás en la BUP",
-    "TPM-19": "No se pudo crear ningún registro",
-    "TPM-20": "Algunos registros no se pudieron crear"
+    "TPM-9": "Recurso eliminado exitosamente",
+    "TPM-10": "Acceso no autorizado",
+    "TPM-11": "El operador/supervisor no tiene permisos para realizar estas operaciones",
+    "TPM-12": "Ocurrio algun error al crear el registro",
+    "TPM-13": "Ocurrio un error durante la actualizacion de este objeto",
+    "TPM-14": "Ocurrio un error al obtener algunos registros",
+    "TPM-15": "Ocurrio un error al actualizar algunos registros",
+    "TPM-16": "Ocurrio un error al crear algunos registros",
+    "TPM-17":"No hay suficientes equipos para ejecutar salida"
 }
 
 
-def partial_response(app_code,message="",name="",id=""):
+def partial_response(app_code,message="",name="",id=0):
     if message=="":
         message = app_codes[app_code]
     

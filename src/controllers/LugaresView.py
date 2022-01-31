@@ -112,9 +112,9 @@ class LugaresList(Resource):
             if(len(listaErrores)==0):
                 return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-8")
             else:
-                return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-20", "",listaErrores)
+                return returnCodes.custom_response(listaObjetosCreados, 201, "TPM-16", "",listaErrores)
         else:
-            return returnCodes.custom_response(None, 409, "TPM-20","", listaErrores)
+            return returnCodes.custom_response(None, 409, "TPM-16","", listaErrores)
 
     
     @nsLugares.doc("actualizar lugar")
