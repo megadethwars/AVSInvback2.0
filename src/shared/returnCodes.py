@@ -18,7 +18,8 @@ app_codes = {
     "TPM-14": "Ocurrio un error al obtener algunos registros",
     "TPM-15": "Ocurrio un error al actualizar algunos registros",
     "TPM-16": "Ocurrio un error al crear algunos registros",
-    "TPM-17":"No hay suficientes equipos para ejecutar salida"
+    "TPM-17":"No hay suficientes equipos para ejecutar salida",
+    "TPM-18":"Acceso autorizado"
 }
 
 

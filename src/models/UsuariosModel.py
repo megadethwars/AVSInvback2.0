@@ -1,6 +1,8 @@
 # app/src/models/CatalogoModel.py
 from marshmallow import fields, Schema, validate
 import datetime
+
+from sqlalchemy import true
 from . import db
 
 class UsuariosModel(db.Model):
@@ -91,7 +93,7 @@ class UsuariosSchema(Schema):
     username = fields.Str(required=True, validate=[validate.Length(max=45)])
     apellidoPaterno = fields.Str(required=True, validate=[validate.Length(max=45)])
     apellidoMaterno = fields.Str(required=True, validate=[validate.Length(max=45)])
-    password = fields.Str(required=True)
+    password = fields.Str(required=True,load_only=true)
     telefono = fields.Str(required=True, validate=[validate.Length(max=45)])
     correo =fields.Str(required=True, validate=[validate.Length(max=100)])
     foto =fields.Str()
@@ -99,6 +101,17 @@ class UsuariosSchema(Schema):
     statusId = fields.Integer(required=True)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
+
+
+class UsuarioLoginSchema(Schema):
+    """
+    Catalogo Schema
+    """
+    
+   
+    username = fields.Str(required=True, validate=[validate.Length(max=45)])
+    password = fields.Str(required=True,load_only=true)
+    
 
 
 class UsuariosSchemaUpdate(Schema):
@@ -110,7 +123,6 @@ class UsuariosSchemaUpdate(Schema):
     username = fields.Str(validate=[validate.Length(max=45)])
     apellidoPaterno = fields.Str(validate=[validate.Length(max=45)])
     apellidoMaterno = fields.Str(validate=[validate.Length(max=45)])
-    password = fields.Str()
     telefono = fields.Str( validate=[validate.Length(max=45)])
     correo =fields.Str( validate=[validate.Length(max=100)])
     foto =fields.Str()
