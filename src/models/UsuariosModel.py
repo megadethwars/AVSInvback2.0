@@ -105,15 +105,19 @@ class UsuariosSchema(Schema):
 
 class UsuarioLoginSchema(Schema):
     """
-    Catalogo Schema
+    user Schema
     """
-    
-   
     username = fields.Str(required=True, validate=[validate.Length(max=45)])
     password = fields.Str(required=True,load_only=true)
     
 
-
+class UsuarioLoginUpdateSchema(Schema):
+    """
+    user Schema
+    """
+    id = fields.Int(required=True)
+    username = fields.Str(required=True, validate=[validate.Length(max=45)])
+    password = fields.Str(required=True,load_only=true)
 class UsuariosSchemaUpdate(Schema):
     """
     Catalogo Schema

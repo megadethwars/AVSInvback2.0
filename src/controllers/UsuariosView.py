@@ -2,7 +2,7 @@
 
 from flask import Flask, request, json, Response, Blueprint, g
 from marshmallow import ValidationError
-from ..models.UsuariosModel import UsuariosModel, UsuariosSchema,UsuariosSchemaUpdate,UsuarioLoginSchema
+from ..models.UsuariosModel import UsuariosModel, UsuariosSchema,UsuariosSchemaUpdate,UsuarioLoginSchema,UsuarioLoginUpdateSchema
 from ..models.RolesModel import RolesModel
 from ..models.EstatusUsuariosModel import EstatusUsuariosModel
 from ..models import db
@@ -15,6 +15,7 @@ Usuario_api = Blueprint("users_api", __name__)
 usuarios_schema = UsuariosSchema()
 usuarios_schema_update = UsuariosSchemaUpdate()
 user_auth = UsuarioLoginSchema()
+user_pass_update = UsuarioLoginUpdateSchema()
 
 api = Api(Usuario_api)
 
@@ -44,6 +45,17 @@ UsersModelLoginApi = nsUsuarios.model(
        
         "username":fields.String(required=True, description="username"),
         "password":fields.String(required=True, description="password"),
+        
+    }
+)
+
+UsersModelLoginpassUpdateApi = nsUsuarios.model(
+    "usuarios",
+    {
+     
+       "id": fields.Integer(required=True, description="identificador"),
+        "username":fields.String(required=True, description="username"),
+        "password":fields.String(required=True, description="password")
         
     }
 )
@@ -124,7 +136,7 @@ def createUsers(req_data, listaObjetosCreados, listaErrores):
 
 
 @nsUsuarios.route("/login")
-class UsersList(Resource):
+class UsersLogin(Resource):
     @nsUsuarios.doc("login usuario")
     @nsUsuarios.expect(UsersModelLoginApi)
     @nsUsuarios.response(201, "auth")
@@ -149,6 +161,40 @@ class UsersList(Resource):
             return returnCodes.custom_response(None, 401, "TPM-10","acceso no autorizado, usuario y/o contraseña incorrecto")
         serialized_user = usuarios_schema.dump(user)
         return returnCodes.custom_response(serialized_user, 201, "TPM-18")
+
+
+@nsUsuarios.route("/pass")
+class Usersupdatepass(Resource):
+    @nsUsuarios.doc("cambiar password")
+    @nsUsuarios.expect(UsersModelLoginpassUpdateApi)
+    @nsUsuarios.response(200, "success")
+    def patch(self):
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+
+        req_data = request.json
+        if(not req_data):
+            return returnCodes.custom_response(None, 400, "TPM-2")
+        try:
+            data = user_pass_update.load(req_data)
+        except ValidationError as err:    
+            return returnCodes.custom_response(None, 400, "TPM-2", str(err))
+
+        user = UsuariosModel.get_one_users(data.get("id"))
+        if not user:
+            
+            return returnCodes.custom_response(None, 404, "TPM-4","Usuario no encontrado")
+
+        data['password'] = generate_password_hash(data['password'])
+
+        try:
+            user.update(data)
+        except Exception as err:
+            return returnCodes.custom_response(None, 500, "TPM-7", str(err))
+
+        
+        serialized_user = usuarios_schema.dump(user)
+        return returnCodes.custom_response(serialized_user, 201, "TPM-6")
 
 
 @nsUsuarios.route("")
