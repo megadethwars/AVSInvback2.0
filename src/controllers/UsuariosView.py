@@ -39,7 +39,7 @@ UsersModelApi = nsUsuarios.model(
 )
 
 UsersModelLoginApi = nsUsuarios.model(
-    "usuarios",
+    "usuariosLogin",
     {
      
        
@@ -50,7 +50,7 @@ UsersModelLoginApi = nsUsuarios.model(
 )
 
 UsersModelLoginpassUpdateApi = nsUsuarios.model(
-    "usuarios",
+    "usuariosUpdatePass",
     {
      
        "id": fields.Integer(required=True, description="identificador"),
@@ -65,7 +65,7 @@ UsersModelListApi = nsUsuarios.model('usersList', {
 })
 
 UsersPatchApi = nsUsuarios.model(
-    "users",
+    "usersPatch",
     {
         "id": fields.Integer(required=True, description="identificador"),
         "nombre": fields.String(required=True, description="nombre"),
