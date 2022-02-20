@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def get():
-  return {'hello': 'world'}
+  return {'hello': 'world2'}
 
 if __name__ == '__main__':
 
