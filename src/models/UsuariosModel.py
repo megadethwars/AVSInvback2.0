@@ -1,8 +1,8 @@
 # app/src/models/CatalogoModel.py
 from marshmallow import fields, Schema, validate
 import datetime
-from .RolesModel import RolesSchema
-from .EstatusUsuariosModel import EstatusUsuariosSchema
+#from .RolesModel import RolesSchema
+#from .EstatusUsuariosModel import EstatusUsuariosSchema
 from sqlalchemy import true
 from . import db
 
@@ -34,13 +34,13 @@ class UsuariosModel(db.Model):
     fechaAlta = db.Column(db.DateTime)
     fechaUltimaModificacion = db.Column(db.DateTime)
 
-    rol=db.relationship(
-        "RolesModel",backref=db.backref("invRoles",lazy=True)
-    )
+    #rol=db.relationship(
+    #    "RolesModel",backref=db.backref("invRoles",lazy=True)
+    #)
 
-    status=db.relationship(
-        "EstatusUsuariosModel",backref=db.backref("invStatusUsuarios",lazy=True)
-    )
+    #status=db.relationship(
+    #    "EstatusUsuariosModel",backref=db.backref("invStatusUsuarios",lazy=True)
+    #)
 
     def __init__(self, data):
         """
@@ -110,8 +110,8 @@ class UsuariosSchema(Schema):
     foto =fields.Str()
     rolId = fields.Integer(required=True)
     statusId = fields.Integer(required=True)
-    rol=fields.Nested(RolesSchema)
-    status = fields.Nested(EstatusUsuariosSchema)
+    #rol=fields.Nested(RolesSchema)
+    #status = fields.Nested(EstatusUsuariosSchema)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
