@@ -60,4 +60,4 @@ jobs:
         with:
           app-name: 'avsinventoryswagger'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DDBB372E78834A8AAAD806E2BD20DB97 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_9C5E700BB00D46628BF43CA868288813 }}
