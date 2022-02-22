@@ -68,12 +68,12 @@ def create_app(env_name):
     #        return {'hello': 'world'}
 
 
-    @app.route("/")
-    def index():
-        """
-        root endpoint
-        """
-        return "GKE Config Tester Backend is running in version 1.0.1"
+    #@app.route("/")
+    #def index():
+    #    """
+    #    root endpoint
+    #    """
+    #    return "GKE Config Tester Backend is running in version 1.0.1"
 
 
 

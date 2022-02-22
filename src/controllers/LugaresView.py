@@ -77,12 +77,13 @@ class LugaresList(Resource):
         try:
 
             """List all lugares"""
-            print('getting')
+            print('getting lugares')
             lugares = LugaresModel.get_all_lugares()
             #return catalogos
             serialized_lugares = lugares_schema.dump(lugares, many=True)
             return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
         except Exception as ex:
+            print('ocurrio un error '+str(ex))
             return returnCodes.custom_response(serialized_lugares, 500, "TPM-7",str(ex))
 
 
