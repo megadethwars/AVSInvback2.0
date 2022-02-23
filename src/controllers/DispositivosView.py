@@ -4,6 +4,8 @@ from email.policy import default
 from flask import Flask, request, json, Response, Blueprint, g
 from marshmallow import ValidationError
 from sqlalchemy import true
+
+from ..models.StatusDevicesModel import StatusDevicesModel
 from ..models.DispositivosModel import DispositivosModel, DispositivosSchema,DispositivosSchemaUpdate,DispositivosSchemaQuery
 from ..models.LugaresModel import LugaresModel
 from ..models import db
@@ -41,7 +43,8 @@ DevicesQueryModel = nsDevices.model(
         "costo" : fields.Integer(description="costo"),
         "compra" : fields.String( description="compra"),
         "proveedor" : fields.String( description="proveedor"),
-        "idMov" : fields.String( description="idMov")
+        "idMov" : fields.String( description="idMov"),
+        "statusId":fields.Integer( description="status disp")
 
     }
 )
@@ -67,7 +70,8 @@ DevicesModelApi = nsDevices.model(
         "costo" : fields.Integer(description="observaciones"),
         "compra" : fields.String( description="compra"),
         "proveedor" : fields.String( description="proveedor"),
-        "idMov" : fields.String( description="idMov")
+        "idMov" : fields.String( description="idMov"),
+        "statusId":fields.Integer( description="status disp")
 
     }
 )
@@ -94,7 +98,8 @@ DevicesPatchApi = nsDevices.model(
         "costo" : fields.Integer(description="costo"),
         "compra" : fields.String( description="compra"),
         "proveedor" : fields.String( description="proveedor"),
-        "idMov" : fields.String( description="idMov")
+        "idMov" : fields.String( description="idMov"),
+        "statusId":fields.Integer( description="status disp")
         
     }
 )
@@ -124,6 +129,13 @@ def createDevices(req_data, listaObjetosCreados, listaErrores):
         error = returnCodes.partial_response("TPM-4","",data.get("lugarId"))
         listaErrores.append(error)
         return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("lugarId"))
+
+    status_in_db = StatusDevicesModel.get_one_status(data.get("statusId"))
+    if not status_in_db:
+        #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
+        error = returnCodes.partial_response("TPM-4","",data.get("statusId"))
+        listaErrores.append(error)
+        return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("statusId"))
 
     #status_in_db = EstatusUsuariosModel.get_one_status(data.get("statusId"))
     #if not status_in_db:
@@ -220,12 +232,12 @@ class DevicesList(Resource):
                 
                 return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("lugarId"))
 
-        #if "statusId" in data:
-        #    status_in_db = EstatusUsuariosModel.get_one_status(data.get("statusId"))
-        #    if not status_in_db:
+        if "statusId" in data:
+            status_in_db = StatusDevicesModel.get_one_status(data.get("statusId"))
+            if not status_in_db:
                 #error = returnCodes.custom_response(None, 409, "TPM-5", "", data.get("nombre")).json
                 
-        #        return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("statusId"))
+                return returnCodes.custom_response(None, 409, "TPM-4", "", data.get("statusId"))
 
         try:
             device.update(data)

@@ -26,6 +26,9 @@ class DispositivosModel(db.Model):
     lugarId = db.Column(
         db.Integer,db.ForeignKey("invLugares.id"),nullable=False
     )
+    statusId= db.Column(
+        db.Integer,db.ForeignKey("invStatusDevices.id"),nullable=False
+    )
     pertenece = db.Column(db.String(45))
     descompostura = db.Column(db.String(100))
     costo = db.Column(db.Integer)
@@ -34,6 +37,12 @@ class DispositivosModel(db.Model):
     idMov = db.Column(db.Text)
     fechaAlta = db.Column(db.DateTime)
     fechaUltimaModificacion = db.Column(db.DateTime)
+
+    lugar=db.relationship(
+        "LugaresModel",backref=db.backref("invLugares",lazy=True)
+    )
+
+  
 
     def __init__(self, data):
         """
@@ -56,6 +65,8 @@ class DispositivosModel(db.Model):
         self.compra = data.get("compra")
         self.proveedor = data.get("proveedor")
         self.idMov = data.get("idMov")
+        self.statusId= data.get("statusId")
+        
 
         self.fechaAlta = datetime.datetime.utcnow()
         self.fechaUltimaModificacion = datetime.datetime.utcnow()
@@ -137,7 +148,7 @@ class DispositivosSchema(Schema):
     compra = fields.Str( validate=[validate.Length(max=100)])
     proveedor = fields.Str( validate=[validate.Length(max=100)])
     idMov = fields.Str( validate=[validate.Length(max=500)])
-
+    statusId= fields.Integer(required=True)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
@@ -156,6 +167,7 @@ class DispositivosSchemaUpdate(Schema):
     cantidad = fields.Integer()
     observaciones = fields.Str(validate=[validate.Length(max=250)])
     lugarId = fields.Integer()
+    statusId= fields.Integer()
     pertenece = fields.Str(validate=[validate.Length(max=45)])
     descompostura = fields.Str(validate=[validate.Length(max=100)])
     costo = fields.Integer()
@@ -180,6 +192,7 @@ class DispositivosSchemaQuery(Schema):
     cantidad = fields.Integer()
     observaciones = fields.Str(validate=[validate.Length(max=250)])
     lugarId = fields.Integer()
+    statusId= fields.Integer()
     pertenece = fields.Str(validate=[validate.Length(max=45)])
     descompostura = fields.Str(validate=[validate.Length(max=100)])
     costo = fields.Integer()

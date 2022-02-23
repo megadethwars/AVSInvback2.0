@@ -2,7 +2,7 @@
 import os
 #from dotenv import load_dotenv, find_dotenv
 from flask import Flask, current_app, render_template
-from src.appinit import create_app
+from .src.appinit import create_app
 
 
 env_name = 'local'
@@ -13,6 +13,9 @@ app = create_app(env_name)
 #@app.route('/')
 #def get():
 #  return {'hello': 'world1'}
+
+#migrate:     flask db migrate --directory migrationsDev
+#upgrade:     flask db upgrade --directory migrationsDev
 
 if __name__ == '__main__':
 

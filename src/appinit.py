@@ -17,6 +17,7 @@ from .controllers.DispositivosView import nsDevices
 from .controllers.ReportesView import nsReports
 from .controllers.TipoMovimientosView import nstipomoves
 from .controllers.MovimientosView import nsMovements
+from .controllers.StatusDevicesView import nsStatusDevice
 
 from flask_restx import Api, fields, Resource
 from flask_sqlalchemy import SQLAlchemy
@@ -53,6 +54,7 @@ def create_app(env_name):
     api.add_namespace(ns=nsReports,path="/api/v1/reportes")
     api.add_namespace(ns=nstipomoves,path="/api/v1/tipomoves")
     api.add_namespace(ns=nsMovements,path="/api/v1/movimientos")
+    api.add_namespace(ns=nsStatusDevice,path="/api/v1/statusDevices")
     
     @app.errorhandler(404) 
     def not_found(e):

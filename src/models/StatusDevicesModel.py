@@ -1,14 +1,13 @@
-# app/src/models/CatalogoModel.py
 from marshmallow import fields, Schema, validate
 import datetime
 from . import db
 
-class StatusLugaresModel(db.Model):
+class StatusDevicesModel(db.Model):
     """
-    Catalogo Model
+    status Model
     """
     
-    __tablename__ = 'invLugares'
+    __tablename__ = 'invStatusDevices'
 
     id = db.Column(db.Integer, primary_key=True)
     descripcion = db.Column(db.String(100))
@@ -22,7 +21,7 @@ class StatusLugaresModel(db.Model):
         self.descripcion = data.get('descripcion')
         self.fechaAlta = datetime.datetime.utcnow()
         self.fechaUltimaModificacion = datetime.datetime.utcnow()
-  
+     
 
     def save(self):
         db.session.add(self)
@@ -39,21 +38,21 @@ class StatusLugaresModel(db.Model):
         db.session.commit()
 
     @staticmethod
-    def get_all_lugares():
-        return StatusLugaresModel.query.all()
+    def get_all_status():
+        return StatusDevicesModel.query.all()
 
     @staticmethod
-    def get_one_lugar(id):
-        return StatusLugaresModel.query.get(id)
+    def get_one_status(id):
+        return StatusDevicesModel.query.get(id)
 
     @staticmethod
-    def get_lugar_by_nombre(value):
-        return StatusLugaresModel.query.filter_by(descripcion=value).first()
+    def get_status_by_nombre(value):
+        return StatusDevicesModel.query.filter_by(descripcion=value).first()
 
     def __repr(self):
         return '<id {}>'.format(self.id)
 
-class LugaresSchema(Schema):
+class StatusDevicesSchema(Schema):
     """
     lugar Schema
     """
@@ -64,7 +63,7 @@ class LugaresSchema(Schema):
 
 
 
-class LugaresSchemaUpdate(Schema):
+class StatusDevicesSchemaUpdate(Schema):
     """
     lugar Schema
     """
@@ -72,4 +71,3 @@ class LugaresSchemaUpdate(Schema):
     descripcion = fields.Str(validate=[validate.Length(max=100)])
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
- 
