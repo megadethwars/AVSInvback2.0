@@ -2,6 +2,8 @@
 from pkgutil import ModuleInfo
 from marshmallow import fields, Schema, validate
 import datetime
+from .StatusDevicesModel import StatusDevicesModel
+from .LugaresModel import LugaresModel
 from sqlalchemy import desc
 import sqlalchemy
 from . import db
@@ -40,6 +42,11 @@ class DispositivosModel(db.Model):
 
     lugar=db.relationship(
         "LugaresModel",backref=db.backref("invLugares",lazy=True)
+    )
+
+  
+    status=db.relationship(
+        "StatusDevicesModel",backref=db.backref("invStatusDevices",lazy=True)
     )
 
   
@@ -149,6 +156,8 @@ class DispositivosSchema(Schema):
     proveedor = fields.Str( validate=[validate.Length(max=100)])
     idMov = fields.Str( validate=[validate.Length(max=500)])
     statusId= fields.Integer(required=True)
+    lugar=fields.Nested(LugaresModel)
+    status = fields.Nested(StatusDevicesModel)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
@@ -174,6 +183,8 @@ class DispositivosSchemaUpdate(Schema):
     compra = fields.Str(validate=[validate.Length(max=100)])
     proveedor = fields.Str(validate=[validate.Length(max=100)])
     idMov = fields.Str(validate=[validate.Length(max=500)])
+    lugar=fields.Nested(LugaresModel)
+    status = fields.Nested(StatusDevicesModel)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
@@ -196,6 +207,8 @@ class DispositivosSchemaQuery(Schema):
     pertenece = fields.Str(validate=[validate.Length(max=45)])
     descompostura = fields.Str(validate=[validate.Length(max=100)])
     costo = fields.Integer()
+    lugar=fields.Nested(LugaresModel)
+    status = fields.Nested(StatusDevicesModel)
     compra = fields.Str(validate=[validate.Length(max=100)])
     proveedor = fields.Str(validate=[validate.Length(max=100)])
     idMov = fields.Str(validate=[validate.Length(max=500)])
