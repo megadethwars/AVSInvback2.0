@@ -2,8 +2,8 @@
 from pkgutil import ModuleInfo
 from marshmallow import fields, Schema, validate
 import datetime
-from .StatusDevicesModel import StatusDevicesModel
-from .LugaresModel import LugaresModel
+from .StatusDevicesModel import StatusDevicesSchema
+from .LugaresModel import LugaresSchema
 from sqlalchemy import desc
 import sqlalchemy
 from . import db
@@ -156,8 +156,8 @@ class DispositivosSchema(Schema):
     proveedor = fields.Str( validate=[validate.Length(max=100)])
     idMov = fields.Str( validate=[validate.Length(max=500)])
     statusId= fields.Integer(required=True)
-    lugar=fields.Nested(LugaresModel)
-    status = fields.Nested(StatusDevicesModel)
+    lugar=fields.Nested(LugaresSchema)
+    status = fields.Nested(StatusDevicesSchema)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
@@ -183,8 +183,8 @@ class DispositivosSchemaUpdate(Schema):
     compra = fields.Str(validate=[validate.Length(max=100)])
     proveedor = fields.Str(validate=[validate.Length(max=100)])
     idMov = fields.Str(validate=[validate.Length(max=500)])
-    lugar=fields.Nested(LugaresModel)
-    status = fields.Nested(StatusDevicesModel)
+    lugar=fields.Nested(LugaresSchema)
+    status = fields.Nested(StatusDevicesSchema)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
@@ -207,8 +207,8 @@ class DispositivosSchemaQuery(Schema):
     pertenece = fields.Str(validate=[validate.Length(max=45)])
     descompostura = fields.Str(validate=[validate.Length(max=100)])
     costo = fields.Integer()
-    lugar=fields.Nested(LugaresModel)
-    status = fields.Nested(StatusDevicesModel)
+    lugar=fields.Nested(LugaresSchema)
+    status = fields.Nested(StatusDevicesSchema)
     compra = fields.Str(validate=[validate.Length(max=100)])
     proveedor = fields.Str(validate=[validate.Length(max=100)])
     idMov = fields.Str(validate=[validate.Length(max=500)])
