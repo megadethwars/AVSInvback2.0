@@ -7,6 +7,8 @@ from sqlalchemy import desc
 import sqlalchemy
 from . import db
 from sqlalchemy import Date,cast
+from .DispositivosModel import DispositivosSchema
+from .UsuariosModel import UsuariosSchema
 
 class ReportesModel(db.Model):
     """
@@ -27,6 +29,15 @@ class ReportesModel(db.Model):
     foto = db.Column(db.Text)
     fechaAlta = db.Column(db.DateTime)
     fechaUltimaModificacion = db.Column(db.DateTime)
+
+    dispositivo=db.relationship(
+        "DispositivosModel",backref=db.backref("invDispositivos",lazy=True)
+    )
+
+  
+    usuario=db.relationship(
+        "UsuariosModel",backref=db.backref("invUsuarios",lazy=True)
+    )
 
     def __init__(self, data):
         """
@@ -100,7 +111,8 @@ class ReportesSchema(Schema):
     usuarioId = fields.Integer(required=True)
     comentarios = fields.Str()
     foto = fields.Str( validate=[validate.Length(max=500)])
-
+    dispositivo = fields.Nested(DispositivosSchema)
+    usuario = fields.Nested(UsuariosSchema)
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
