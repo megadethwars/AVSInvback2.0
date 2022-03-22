@@ -113,7 +113,7 @@ class RolesList(Resource):
     
     @nsStatusUsuarios.doc("actualizar estatus")
     @nsStatusUsuarios.expect(StatusPatchApi)
-    def patch(self):
+    def put(self):
         if request.is_json is False:
             return returnCodes.custom_response(None, 400, "TPM-2")
 

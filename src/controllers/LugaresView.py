@@ -84,7 +84,7 @@ class LugaresList(Resource):
             return returnCodes.custom_response(serialized_lugares, 200, "TPM-3")
         except Exception as ex:
             print('ocurrio un error en lugares '+str(ex))
-            return returnCodes.custom_response(serialized_lugares, 500, "TPM-7",str(ex))
+            return returnCodes.custom_response(None, 500, "TPM-7",str(ex))
 
 
     
@@ -120,7 +120,7 @@ class LugaresList(Resource):
     
     @nsLugares.doc("actualizar lugar")
     @nsLugares.expect(LugaresPatchApi)
-    def patch(self):
+    def put(self):
 
         if request.is_json is False:
             return returnCodes.custom_response(None, 400, "TPM-2")

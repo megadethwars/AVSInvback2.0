@@ -111,7 +111,7 @@ class RolesList(Resource):
     
     @nsRoles.doc("actualizar catalogo")
     @nsRoles.expect(RolesPatchApi)
-    def patch(self):
+    def put(self):
         if request.is_json is False:
             return returnCodes.custom_response(None, 400, "TPM-2")
 

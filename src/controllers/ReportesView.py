@@ -158,7 +158,7 @@ class ReportesList(Resource):
     
     @nsReports.doc("actualizar reportes")
     @nsReports.expect(ReportsPatchApi)
-    def patch(self):
+    def put(self):
         if request.is_json is False:
             return returnCodes.custom_response(None, 400, "TPM-2")
         req_data = request.json

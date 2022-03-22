@@ -44,7 +44,8 @@ DevicesQueryModel = nsDevices.model(
         "compra" : fields.String( description="compra"),
         "proveedor" : fields.String( description="proveedor"),
         "idMov" : fields.String( description="idMov"),
-        "statusId":fields.Integer( description="status disp")
+        "statusId":fields.Integer( description="status disp"),
+        "serie" : fields.String( description="serie")
 
     }
 )
@@ -71,7 +72,8 @@ DevicesModelApi = nsDevices.model(
         "compra" : fields.String( description="compra"),
         "proveedor" : fields.String( description="proveedor"),
         "idMov" : fields.String( description="idMov"),
-        "statusId":fields.Integer( description="status disp")
+        "statusId":fields.Integer( description="status disp"),
+        "serie" : fields.String( description="serie")
 
     }
 )
@@ -99,7 +101,8 @@ DevicesPatchApi = nsDevices.model(
         "compra" : fields.String( description="compra"),
         "proveedor" : fields.String( description="proveedor"),
         "idMov" : fields.String( description="idMov"),
-        "statusId":fields.Integer( description="status disp")
+        "statusId":fields.Integer( description="status disp"),
+        "serie" : fields.String( description="serie")
         
     }
 )

@@ -168,7 +168,7 @@ class Usersupdatepass(Resource):
     @nsUsuarios.doc("cambiar password")
     @nsUsuarios.expect(UsersModelLoginpassUpdateApi)
     @nsUsuarios.response(200, "success")
-    def patch(self):
+    def put(self):
         if request.is_json is False:
             return returnCodes.custom_response(None, 400, "TPM-2")
 
