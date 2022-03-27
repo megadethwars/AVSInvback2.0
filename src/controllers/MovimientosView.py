@@ -174,7 +174,7 @@ class DevicesList(Resource):
             limit = request.args.get('limit',default = 10, type = int)
         devices = MovimientosModel.get_all_movimientos(offset,limit)
         #return catalogos
-        serialized_movimientos = movimientos_schema.dump(devices, many=True)
+        serialized_movimientos = movimientos_schema.dump(devices.items, many=True)
         return returnCodes.custom_response(serialized_movimientos, 200, "TPM-3")
 
     @nsMovements.doc("Crear movimiento")
@@ -291,7 +291,7 @@ class DeviceQuery(Resource):
             return returnCodes.custom_response(None, 400, "TPM-2")
 
         if "offset" in request.args:
-            offset = request.args.get('offset',default = 0, type = int)
+            offset = request.args.get('offset',default = 1, type = int)
 
         if "limit" in request.args:
             limit = request.args.get('limit',default = 10, type = int)
@@ -310,5 +310,5 @@ class DeviceQuery(Resource):
         if not moves:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
-        serialized_device = movimientos_schema.dump(moves,many=true)
+        serialized_device = movimientos_schema.dump(moves.items,many=true)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3") 

@@ -72,8 +72,8 @@ class MovimientosModel(db.Model):
         db.session.commit()
 
     @staticmethod
-    def get_all_movimientos(offset=0,limit=10):
-        return MovimientosModel.query.order_by(MovimientosModel.id).offset(offset).limit(limit).all()
+    def get_all_movimientos(offset=1,limit=10):
+        return MovimientosModel.query.order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
 
 
     @staticmethod
@@ -84,7 +84,7 @@ class MovimientosModel(db.Model):
     @staticmethod
     def get_movimientos_by_query(jsonFiltros,offset=1,limit=5):
         #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
-        return MovimientosModel.query.filter_by(**jsonFiltros).order_by(MovimientosModel.id).offset(offset).limit(limit).all()
+        return MovimientosModel.query.filter_by(**jsonFiltros).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
 
 
         if "fechaAltaRangoInicio" in jsonFiltros and "fechaAltaRangoFin" in jsonFiltros:
