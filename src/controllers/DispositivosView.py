@@ -172,7 +172,7 @@ class DevicesList(Resource):
         offset = 1
         limit = 10
         if "offset" in request.args:
-            offset = request.args.get('offset',default = 0, type = int)
+            offset = request.args.get('offset',default = 1, type = int)
 
         if "limit" in request.args:
             limit = request.args.get('limit',default = 10, type = int)
@@ -280,7 +280,7 @@ class DeviceQuery(Resource):
             return returnCodes.custom_response(None, 400, "TPM-2")
 
         if "offset" in request.args:
-            offset = request.args.get('offset',default = 0, type = int)
+            offset = request.args.get('offset',default = 1, type = int)
 
         if "limit" in request.args:
             limit = request.args.get('limit',default = 10, type = int)

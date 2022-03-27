@@ -165,10 +165,10 @@ class DevicesList(Resource):
     @nsMovements.expect(parser)
     def get(self):
         """List all status"""
-        offset = 0
+        offset = 1
         limit = 10
         if "offset" in request.args:
-            offset = request.args.get('offset',default = 0, type = int)
+            offset = request.args.get('offset',default = 1, type = int)
 
         if "limit" in request.args:
             limit = request.args.get('limit',default = 10, type = int)
