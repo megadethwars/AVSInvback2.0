@@ -169,7 +169,7 @@ class DevicesList(Resource):
     @nsDevices.expect(parser)
     def get(self):
         """List all status"""
-        offset = 0
+        offset = 1
         limit = 10
         if "offset" in request.args:
             offset = request.args.get('offset',default = 0, type = int)
@@ -178,7 +178,7 @@ class DevicesList(Resource):
             limit = request.args.get('limit',default = 10, type = int)
         devices = DispositivosModel.get_all_devices(offset,limit)
         #return catalogos
-        serialized_devices = dispositivos_schema.dump(devices, many=True)
+        serialized_devices = dispositivos_schema.dump(devices.items, many=True)
         return returnCodes.custom_response(serialized_devices, 200, "TPM-3")
 
     @nsDevices.doc("Crear equipo")
@@ -273,7 +273,7 @@ class DeviceQuery(Resource):
     @api.expect(DevicesQueryModel)
     def post(self):
         print(request.args)
-        offset = 0
+        offset = 1
         limit = 10
 
         if request.is_json is False:
@@ -298,5 +298,5 @@ class DeviceQuery(Resource):
         if not devices:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
-        serialized_device = dispositivos_schema.dump(devices,many=true)
+        serialized_device = dispositivos_schema.dump(devices.items,many=true)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3")

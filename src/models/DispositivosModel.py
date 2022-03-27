@@ -94,8 +94,8 @@ class DispositivosModel(db.Model):
         db.session.commit()
 
     @staticmethod
-    def get_all_devices(offset=0,limit=10):
-        return DispositivosModel.query.order_by(DispositivosModel.id).offset(offset).limit(limit).all()
+    def get_all_devices(offset=1,limit=10):
+        return DispositivosModel.query.order_by(DispositivosModel.id).paginate(offset,limit,error_out=False) 
 
 
     @staticmethod
@@ -113,7 +113,7 @@ class DispositivosModel(db.Model):
     @staticmethod
     def get_devices_by_query(jsonFiltros,offset=1,limit=5):
         #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
-        return DispositivosModel.query.filter_by(**jsonFiltros).order_by(DispositivosModel.id).offset(offset).limit(limit).all()
+        return DispositivosModel.query.filter_by(**jsonFiltros).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False) 
 
 
         if "fechaAltaRangoInicio" in jsonFiltros and "fechaAltaRangoFin" in jsonFiltros:
