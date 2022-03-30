@@ -145,7 +145,7 @@ def createMovements(data, listaObjetosCreados, listaErrores):
     move = MovimientosModel(data)
 
     try:
-        DispositivosModel.update(dictDevice)
+        device_in_db.update(dictDevice)
         move.save()
     except Exception as err:
         #error = returnCodes.custom_response(None, 500, "TPM-7", str(err)).json
