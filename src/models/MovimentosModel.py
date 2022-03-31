@@ -7,7 +7,10 @@ from sqlalchemy import desc
 import sqlalchemy
 from . import db
 from sqlalchemy import Date,cast
-
+from .LugaresModel import LugaresSchema
+from .DispositivosModel import DispositivosSchema
+from .UsuariosModel import UsuariosSchema
+from .TipoMovimientosModel import TipoMoveSchema
 class MovimientosModel(db.Model):
     """
     Catalogo Model
@@ -35,6 +38,23 @@ class MovimientosModel(db.Model):
     foto2 = db.Column(db.Text)
     fechaAlta = db.Column(db.DateTime)
     fechaUltimaModificacion = db.Column(db.DateTime)
+
+    lugar=db.relationship(
+         "LugaresModel",backref=db.backref("invLugares2",lazy=True)
+    )
+
+  
+    usuario=db.relationship(
+         "UsuariosModel",backref=db.backref("invUsuarios2",lazy=True)
+    )
+
+    dispositivo=db.relationship(
+         "DispositivosModel",backref=db.backref("invDispositivos2",lazy=True)
+    )
+
+    tipoMovimiento=db.relationship(
+         "TipoMoveModel",backref=db.backref("invTipoMoves2",lazy=True)
+    )
 
     def __init__(self, data):
         """
@@ -122,6 +142,10 @@ class MovimientosSchema(Schema):
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
     LugarId = fields.Integer(required=True)
+    lugar=fields.Nested(LugaresSchema)
+    dispositivo=fields.Nested(DispositivosSchema)
+    tipoMovimiento=fields.Nested(TipoMoveSchema)
+    usuario = fields.Nested(UsuariosSchema)
 
 
 class MovimientosSchemaUpdate(Schema):
