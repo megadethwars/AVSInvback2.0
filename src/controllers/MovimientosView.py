@@ -188,7 +188,11 @@ class DevicesList(Resource):
         if(not req_data):
             return returnCodes.custom_response(None, 400, "TPM-2")
         try:
-            req_data =req_data['movimientosList']
+
+            if  'movimientosList' in req_data:
+
+                req_data =req_data['movimientosList']
+                
             data = movimientos_schema.load(req_data,many=True)
         except ValidationError as err:    
             return returnCodes.custom_response(None, 400, "TPM-2", str(err))
