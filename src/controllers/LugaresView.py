@@ -25,8 +25,8 @@ LugaresModelListApi = nsLugares.model('lugaresList', {
     'lugares': fields.List(fields.Nested(LugaresModelApi)),
 })
 
-LugaresPatchApi = nsLugares.model(
-    "LugarPatchModel",
+LugaresPutApi = nsLugares.model(
+    "LugarputModel",
     {
         "id": fields.Integer(required=True, description="identificador"),
         "lugar": fields.String(required=True, description="lugar"),
@@ -119,7 +119,7 @@ class LugaresList(Resource):
 
     
     @nsLugares.doc("actualizar lugar")
-    @nsLugares.expect(LugaresPatchApi)
+    @nsLugares.expect(LugaresPutApi)
     def put(self):
 
         if request.is_json is False:

@@ -64,8 +64,8 @@ UsersModelListApi = nsUsuarios.model('usersList', {
     'userslist': fields.List(fields.Nested(UsersModelApi)),
 })
 
-UsersPatchApi = nsUsuarios.model(
-    "usersPatch",
+UsersPutApi = nsUsuarios.model(
+    "usersPut",
     {
         "id": fields.Integer(required=True, description="identificador"),
         "nombre": fields.String(required=True, description="nombre"),
@@ -238,7 +238,7 @@ class UsersList(Resource):
             return returnCodes.custom_response(None, 409, "TPM-16","", listaErrores)
     
     @nsUsuarios.doc("actualizar usuario")
-    @nsUsuarios.expect(UsersPatchApi)
+    @nsUsuarios.expect(UsersPutApi)
     def put(self):
         if request.is_json is False:
             return returnCodes.custom_response(None, 400, "TPM-2")
