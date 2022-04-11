@@ -279,6 +279,20 @@ class OneDevice(Resource):
         serialized_device = movimientos_schema.dump(move)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3")
 
+@nsMovements.route("/LastOne/<int:id>")
+@nsMovements.param("id", "The id identifier")
+@nsMovements.response(404, "movimiento no encontrado")
+class OneMovementLast(Resource):
+    @nsMovements.doc("obtener un movimiento")
+    def get(self, id):
+       
+        move = MovimientosModel.get_lastone_movimiento(id)
+        if not move:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        serialized_device = movimientos_schema.dump(move)
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3")
+
 @nsMovements.route("/query")
 @nsMovements.expect(parser)
 @nsMovements.response(404, "movimiento no encontrado")

@@ -100,6 +100,11 @@ class MovimientosModel(db.Model):
     def get_one_movimiento(id):
         return MovimientosModel.query.get(id)
 
+    @staticmethod
+    def get_lastone_movimiento(id):
+       
+        return MovimientosModel.query.filter_by(dispositivoId=id,tipoMovId=1).order_by(MovimientosModel.fechaAlta.desc()).first()
+
 
     @staticmethod
     def get_movimientos_by_query(jsonFiltros,offset=1,limit=5):
