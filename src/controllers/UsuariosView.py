@@ -157,6 +157,10 @@ class UsersLogin(Resource):
             
             return returnCodes.custom_response(None, 404, "TPM-4","Usuario no encontrado")
 
+        if user.statusId==3:
+            return returnCodes.custom_response(None, 409, "TPM-19","Usuario dado de baja")
+
+
         if check_password_hash(user.password,data['password'])==False:
             return returnCodes.custom_response(None, 401, "TPM-10","acceso no autorizado, usuario y/o contraseña incorrecto")
         serialized_user = usuarios_schema.dump(user)
