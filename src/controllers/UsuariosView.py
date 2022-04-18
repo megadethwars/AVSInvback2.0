@@ -203,7 +203,7 @@ class UsersList(Resource):
     def get(self):
         """List all status"""
         print('getting')
-        users = UsuariosModel.get_all_users()
+        users = UsuariosModel.get_all_users_ok()
         #return catalogos
         serialized_users = usuarios_schema.dump(users, many=True)
         return returnCodes.custom_response(serialized_users, 200, "TPM-3")

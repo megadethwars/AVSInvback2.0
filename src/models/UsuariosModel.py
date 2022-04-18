@@ -79,6 +79,10 @@ class UsuariosModel(db.Model):
     def get_all_users():
         return UsuariosModel.query.all()
 
+    @staticmethod
+    def get_all_users_ok():
+        return UsuariosModel.query.filter(UsuariosModel.statusId != 3).all()
+
 
     @staticmethod
     def get_one_users(id):
