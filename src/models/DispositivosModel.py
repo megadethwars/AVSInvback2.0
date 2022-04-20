@@ -40,6 +40,7 @@ class DispositivosModel(db.Model):
     fechaAlta = db.Column(db.DateTime)
     fechaUltimaModificacion = db.Column(db.DateTime)
     serie = db.Column(db.String(100))
+    accesorios = db.Column(db.String(100))
     lugar=db.relationship(
         "LugaresModel",backref=db.backref("invLugares",lazy=True)
     )
@@ -74,6 +75,7 @@ class DispositivosModel(db.Model):
         self.idMov = data.get("idMov")
         self.statusId= data.get("statusId")
         self.serie = data.get("serie")
+        self.accesorios = data.get("accesorios")
         
 
         self.fechaAlta = datetime.datetime.utcnow()
@@ -162,7 +164,7 @@ class DispositivosSchema(Schema):
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
     serie = fields.Str( validate=[validate.Length(max=100)])
-
+    accesorios = fields.Str( validate=[validate.Length(max=100)])
 
 class DispositivosSchemaUpdate(Schema):
     """
@@ -190,6 +192,7 @@ class DispositivosSchemaUpdate(Schema):
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
     serie = fields.Str( validate=[validate.Length(max=100)])
+    accesorios = fields.Str( validate=[validate.Length(max=100)])
 
 
 class DispositivosSchemaQuery(Schema):
@@ -216,3 +219,4 @@ class DispositivosSchemaQuery(Schema):
     proveedor = fields.Str(validate=[validate.Length(max=100)])
     idMov = fields.Str(validate=[validate.Length(max=500)])
     serie = fields.Str( validate=[validate.Length(max=100)])
+    accesorios = fields.Str( validate=[validate.Length(max=100)])
