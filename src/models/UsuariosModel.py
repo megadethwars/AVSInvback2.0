@@ -96,6 +96,11 @@ class UsuariosModel(db.Model):
     def get_users_by_username(value):
         return UsuariosModel.query.filter_by(username=value).first()
 
+    @staticmethod
+    def get_users_by_query(jsonFiltros,offset=1,limit=100):
+        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
+        return UsuariosModel.query.filter_by(**jsonFiltros).order_by(UsuariosModel.id).paginate(offset,limit,error_out=False) 
+
     def __repr(self):
         return '<id {}>'.format(self.id)
 
@@ -151,3 +156,19 @@ class UsuariosSchemaUpdate(Schema):
     statusId = fields.Integer()
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
+
+class UsuariosSchemaQuery(Schema):
+    """
+    Catalogo Schema
+    """
+    id = fields.Int()
+    nombre = fields.Str(validate=[validate.Length(max=45)])
+    username = fields.Str(validate=[validate.Length(max=45)])
+    apellidoPaterno = fields.Str(validate=[validate.Length(max=45)])
+    apellidoMaterno = fields.Str(validate=[validate.Length(max=45)])
+    telefono = fields.Str( validate=[validate.Length(max=45)])
+    correo =fields.Str( validate=[validate.Length(max=100)])
+    foto =fields.Str()
+    rolId = fields.Integer()
+    statusId = fields.Integer()
+   

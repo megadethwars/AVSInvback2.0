@@ -2,7 +2,7 @@
 
 from flask import Flask, request, json, Response, Blueprint, g
 from marshmallow import ValidationError
-from ..models.UsuariosModel import UsuariosModel, UsuariosSchema,UsuariosSchemaUpdate,UsuarioLoginSchema,UsuarioLoginUpdateSchema
+from ..models.UsuariosModel import UsuariosModel, UsuariosSchema,UsuariosSchemaUpdate,UsuarioLoginSchema,UsuarioLoginUpdateSchema, UsuariosSchemaQuery
 from ..models.RolesModel import RolesModel
 from ..models.EstatusUsuariosModel import EstatusUsuariosModel
 from ..models import db
@@ -16,7 +16,7 @@ usuarios_schema = UsuariosSchema()
 usuarios_schema_update = UsuariosSchemaUpdate()
 user_auth = UsuarioLoginSchema()
 user_pass_update = UsuarioLoginUpdateSchema()
-
+usuarios_schema_query = UsuariosSchemaQuery()
 api = Api(Usuario_api)
 
 nsUsuarios = api.namespace("users", description="API operations for usuarios")
@@ -35,6 +35,24 @@ UsersModelApi = nsUsuarios.model(
         "foto":fields.String( description="foto"),
         "rolId":fields.Integer(required=True, description="rolId"),
         "statusId":fields.Integer(required=True, description="statusId")
+    }
+)
+
+UsersModelQueryApi = nsUsuarios.model(
+    "usuariosuery",
+    {
+     
+        "id": fields.Integer( description="identificador"),
+        "nombre": fields.String( description="nombre"),
+        "username":fields.String( description="username"),
+        "apellidoPaterno":fields.String( description="apellidoPaterno"),
+        "apellidoMaterno":fields.String( description="apellidoMaterno"),
+        "password":fields.String( description="password"),
+        "telefono":fields.String( description="telefono"),
+        "correo":fields.String( description="correo"),
+        "foto":fields.String( description="foto"),
+        "rolId":fields.Integer(description="rolId"),
+        "statusId":fields.Integer( description="statusId")
     }
 )
 
@@ -294,3 +312,40 @@ class OneCatalogo(Resource):
 
         serialized_user = usuarios_schema.dump(rol)
         return returnCodes.custom_response(serialized_user, 200, "TPM-3")
+
+@nsUsuarios.route("/query")
+
+@nsUsuarios.response(404, "usuario no encontrado")
+class UserQuery(Resource):
+    
+    @nsUsuarios.doc("obtener varios usuarios")
+    @api.expect(UsersModelQueryApi)
+    def post(self):
+        print(request.args)
+        offset = 1
+        limit = 100
+
+        if request.is_json is False:
+            return returnCodes.custom_response(None, 400, "TPM-2")
+
+        if "offset" in request.args:
+            offset = request.args.get('offset',default = 1, type = int)
+
+        if "limit" in request.args:
+            limit = request.args.get('limit',default = 10, type = int)
+
+        req_data = request.json
+        data = None
+        if(not req_data):
+            return returnCodes.custom_response(None, 400, "TPM-2")
+        try:
+            data = usuarios_schema_query.load(req_data, partial=True)
+        except ValidationError as err:
+            return returnCodes.custom_response(None, 400, "TPM-2", str(err))
+
+        devices = UsuariosModel.get_users_by_query(data,offset,limit)
+        if not devices:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        serialized_device = usuarios_schema.dump(devices.items,many=True)
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3")

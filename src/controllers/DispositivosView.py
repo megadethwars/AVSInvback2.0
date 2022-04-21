@@ -298,5 +298,5 @@ class DeviceQuery(Resource):
         if not devices:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
-        serialized_device = dispositivos_schema.dump(devices.items,many=true)
+        serialized_device = dispositivos_schema.dump(devices.items,many=True)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3")
