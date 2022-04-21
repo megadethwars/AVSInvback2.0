@@ -113,7 +113,11 @@ class DispositivosModel(db.Model):
         return DispositivosModel.query.filter_by(producto=value).first()
 
     @staticmethod
-    def get_devices_by_query(jsonFiltros,offset=1,limit=5):
+    def get_devices_by_like(value,offset=1,limit=100):
+        return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%')).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+
+    @staticmethod
+    def get_devices_by_query(jsonFiltros,offset=1,limit=100):
         #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
         return DispositivosModel.query.filter_by(**jsonFiltros).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False) 
 

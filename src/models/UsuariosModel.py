@@ -168,7 +168,6 @@ class UsuariosSchemaQuery(Schema):
     apellidoMaterno = fields.Str(validate=[validate.Length(max=45)])
     telefono = fields.Str( validate=[validate.Length(max=45)])
     correo =fields.Str( validate=[validate.Length(max=100)])
-    foto =fields.Str()
     rolId = fields.Integer()
     statusId = fields.Integer()
    
