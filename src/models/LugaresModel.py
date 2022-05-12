@@ -50,6 +50,10 @@ class LugaresModel(db.Model):
     @staticmethod
     def get_lugar_by_nombre(value):
         return LugaresModel.query.filter_by(lugar=value).first()
+    
+    @staticmethod
+    def get_lugar_by_like(value,offset,limit):
+        return LugaresModel.query.filter(LugaresModel.lugar.ilike(f'%{value}%') ).order_by(LugaresModel.id).paginate(offset,limit,error_out=False)
 
     def __repr(self):
         return '<id {}>'.format(self.id)

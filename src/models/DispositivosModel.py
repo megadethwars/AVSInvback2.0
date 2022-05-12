@@ -3,7 +3,7 @@ from pkgutil import ModuleInfo
 from marshmallow import fields, Schema, validate
 import datetime
 from .StatusDevicesModel import StatusDevicesSchema
-from .LugaresModel import LugaresSchema
+from .LugaresModel import LugaresSchema,LugaresModel
 from sqlalchemy import desc
 import sqlalchemy
 from . import db
@@ -114,7 +114,19 @@ class DispositivosModel(db.Model):
 
     @staticmethod
     def get_devices_by_like(value,offset=1,limit=100):
-        return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') | DispositivosModel.producto.ilike(f'%{value}%') | DispositivosModel.marca.ilike(f'%{value}%') | DispositivosModel.modelo.ilike(f'%{value}%') | DispositivosModel.serie.ilike(f'%{value}%') | DispositivosModel.accesorios.ilike(f'%{value}%')).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=3)
+        idlugar=0
+        if len(lugar.items)!=0:
+            idlugar = lugar.items[0].id
+        
+
+        result = DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') | DispositivosModel.producto.ilike(f'%{value}%') | DispositivosModel.marca.ilike(f'%{value}%') | DispositivosModel.modelo.ilike(f'%{value}%') | DispositivosModel.serie.ilike(f'%{value}%') | DispositivosModel.accesorios.ilike(f'%{value}%')).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+
+        if len(result.items)==0:
+
+            return DispositivosModel.query.filter(DispositivosModel.lugarId==idlugar).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        else:
+            return result
 
     @staticmethod
     def get_devices_by_query(jsonFiltros,offset=1,limit=100):
