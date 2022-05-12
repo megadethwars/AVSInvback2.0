@@ -7,10 +7,11 @@ from sqlalchemy import desc
 import sqlalchemy
 from . import db
 from sqlalchemy import Date,cast
-from .LugaresModel import LugaresSchema
-from .DispositivosModel import DispositivosSchema
+from .LugaresModel import LugaresSchema,LugaresModel
+from .DispositivosModel import DispositivosSchema,DispositivosModel
 from .UsuariosModel import UsuariosSchema
 from .TipoMovimientosModel import TipoMoveSchema
+from sqlalchemy import or_
 class MovimientosModel(db.Model):
     """
     Catalogo Model
@@ -94,6 +95,22 @@ class MovimientosModel(db.Model):
     @staticmethod
     def get_all_movimientos(offset=1,limit=10):
         return MovimientosModel.query.order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
+
+
+    @staticmethod
+    def get_all_movimientos_by_like(value,offset=1,limit=10):
+        lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=3)
+        idlugar=0
+        if len(lugar.items)!=0:
+            idlugar = lugar.items[0].id
+        
+        device = DispositivosModel.get_device_by_codigo_like(value,offset=1,limit=3)
+        iddevice=0
+        if len(device.items)!=0:
+            iddevice = device.items[0].id
+
+        result = MovimientosModel.query.filter(or_(MovimientosModel.dispositivoId==iddevice, MovimientosModel.idMovimiento.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
+        return result
 
 
     @staticmethod

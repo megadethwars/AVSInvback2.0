@@ -330,3 +330,31 @@ class DeviceQuery(Resource):
 
         serialized_device = movimientos_schema.dump(moves.items,many=true)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3") 
+
+
+@nsMovements.route("/filter/<value>")
+@nsMovements.expect(parser)
+@nsMovements.response(404, "movimiento no encontrado")
+class MovementFilter(Resource):
+    
+    @nsMovements.doc("obtener varios movimientos")
+    def get(self,value):
+      
+        offset = 1
+        limit = 100
+
+        
+
+        if "offset" in request.args:
+            offset = request.args.get('offset',default = 1, type = int)
+
+        if "limit" in request.args:
+            limit = request.args.get('limit',default = 100, type = int)
+
+
+        moves = MovimientosModel.get_all_movimientos_by_like(value,offset,limit)
+        if not moves:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        serialized_device = movimientos_schema.dump(moves.items,many=True)
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3")

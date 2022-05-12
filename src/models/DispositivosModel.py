@@ -111,6 +111,10 @@ class DispositivosModel(db.Model):
     @staticmethod
     def get_devices_by_producto(value):
         return DispositivosModel.query.filter_by(producto=value).first()
+    
+    @staticmethod
+    def get_device_by_codigo_like(value,offset,limit):
+        return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') ).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
 
     @staticmethod
     def get_devices_by_like(value,offset=1,limit=100):
