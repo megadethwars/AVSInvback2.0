@@ -42,7 +42,8 @@ MovimientosQueryModel = nsMovements.model(
         "idMovimiento" :  fields.String(description="idMovimiento"),
         "tipoMovId" : fields.Integer(description="tipoMovId"),
         "comentarios" : fields.String( description="comentarios"),
-
+        "fechaAltaRangoInicio":fields.String( description="foto"),
+        "fechaAltaRangoFin":fields.String( description="foto")
 
     }
 )
