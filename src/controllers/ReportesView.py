@@ -26,14 +26,16 @@ api = Api(Report_api)
 nsReports = api.namespace("reports", description="API operations for reportes")
 
 ReportsQueryModel = nsReports.model(
-    "reportes",
+    "reportesQuery",
     {
      
         "id": fields.Integer(description="identificador"),
         "dispositivoId" : fields.Integer(description="dispositivoId"),
         "usuarioId" : fields.Integer(description="usuarioId"),
         "comentarios" : fields.String(description="comentarios"),
-        "foto" : fields.String( description="foto")
+        "foto" : fields.String( description="foto"),
+        "fechaAltaRangoInicio":fields.String( description="foto"),
+        "fechaAltaRangoFin":fields.String( description="foto")
 
     }
 )
@@ -243,5 +245,5 @@ class ReportQuery(Resource):
         if not devices:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
-        serialized_reportes = reportes_schema.dump(devices,many=true)
+        serialized_reportes = reportes_schema.dump(devices.items,many=true)
         return returnCodes.custom_response(serialized_reportes, 200, "TPM-3")

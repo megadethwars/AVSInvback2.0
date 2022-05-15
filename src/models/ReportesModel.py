@@ -79,7 +79,7 @@ class ReportesModel(db.Model):
     @staticmethod
     def get_reportes_by_query(jsonFiltros,offset=1,limit=5):
         #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
-        return ReportesModel.query.filter_by(**jsonFiltros).order_by(ReportesModel.id).offset(offset).limit(limit).all()
+        #return ReportesModel.query.filter_by(**jsonFiltros).order_by(ReportesModel.id).offset(offset).limit(limit).all()
 
 
         if "fechaAltaRangoInicio" in jsonFiltros and "fechaAltaRangoFin" in jsonFiltros:
@@ -87,17 +87,17 @@ class ReportesModel(db.Model):
             end = jsonFiltros["fechaAltaRangoFin"]
             del jsonFiltros["fechaAltaRangoInicio"]
             del jsonFiltros["fechaAltaRangoFin"]
-            alta = alta+"T00:00:00.000000"
-            end = end + "T23:59:59.999999"
-            return ComercioModel.query.filter_by(**jsonFiltros).filter(ComercioModel.fechaAlta >= alta).filter(ComercioModel.fechaAlta <= end).paginate(offset,limit,error_out=False),rows
+            alta = alta+" 00:00:00.000"
+            end = end + " 23:59:59.999"
+            return ReportesModel.query.filter_by(**jsonFiltros).filter(ReportesModel.fechaAlta >= alta).filter(ReportesModel.fechaAlta <= end).order_by(ReportesModel.id).paginate(offset,limit,error_out=False)
         
         elif "fechaAltaRangoInicio" in jsonFiltros:
             alta = jsonFiltros["fechaAltaRangoInicio"]
             del jsonFiltros["fechaAltaRangoInicio"]
-            return ComercioModel.query.filter_by(**jsonFiltros).filter(cast(ComercioModel.fechaAlta,Date) == alta).paginate(offset,limit,error_out=False),rows
+            return ReportesModel.query.filter_by(**jsonFiltros).filter(cast(ReportesModel.fechaAlta,Date) == alta).order_by(ReportesModel.id).paginate(offset,limit,error_out=False)
         
         else:
-            return ComercioModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False),rows
+            return ReportesModel.query.filter_by(**jsonFiltros).order_by(ReportesModel.id).paginate(offset,limit,error_out=False)
 
     def __repr(self):
         return '<id {}>'.format(self.id)
@@ -139,3 +139,6 @@ class ReportesSchemaQuery(Schema):
     usuarioId = fields.Integer()
     comentarios = fields.Str()
     foto = fields.Str( validate=[validate.Length(max=500)])
+    fechaAltaRangoInicio=fields.Date()
+    fechaAltaRangoFin=fields.Date()
+  
