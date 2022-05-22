@@ -7,9 +7,10 @@ from sqlalchemy import desc
 import sqlalchemy
 from . import db
 from sqlalchemy import Date,cast
-from .DispositivosModel import DispositivosSchema
-from .UsuariosModel import UsuariosSchema
-
+from .DispositivosModel import DispositivosSchema,DispositivosModel
+from .UsuariosModel import UsuariosSchema,UsuariosModel
+from .LugaresModel import LugaresSchema,LugaresModel
+from sqlalchemy import or_
 class ReportesModel(db.Model):
     """
     Catalogo Model
@@ -74,6 +75,34 @@ class ReportesModel(db.Model):
     @staticmethod
     def get_one_report(id):
         return ReportesModel.query.get(id)
+    
+    @staticmethod
+    def get_all_reports_by_like(value,offset=1,limit=10):
+        lugares=[]
+        devices=[]
+        users=[]
+
+        lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
+        
+        if len(lugar.items)!=0:
+            for x in lugar.items:
+                lugares.append(x.id)
+        
+        device = DispositivosModel.get_device_by_codigo_like_entity(value,offset=1,limit=1000)
+        
+        if len(device.items)!=0:
+            for x in device.items:
+                devices.append(x.id)
+        
+        user = UsuariosModel.get_user_by_params_like_entity(value,offset=1,limit=100)
+        
+        if len(user.items)!=0:
+            for x in user.items:
+                users.append(x.id)
+
+     
+        result = ReportesModel.query.filter(or_(ReportesModel.usuarioId.in_(users),ReportesModel.dispositivoId.in_(devices), ReportesModel.comentarios.ilike(f'%{value}%'))).order_by(ReportesModel.id).paginate(offset,limit,error_out=False) 
+        return result
 
 
     @staticmethod

@@ -247,3 +247,31 @@ class ReportQuery(Resource):
 
         serialized_reportes = reportes_schema.dump(devices.items,many=true)
         return returnCodes.custom_response(serialized_reportes, 200, "TPM-3")
+
+
+@nsReports.route("/filter/<value>")
+@nsReports.expect(parser)
+@nsReports.response(404, "reporte no encontrado")
+class MovementFilter(Resource):
+    
+    @nsReports.doc("obtener varios reportes")
+    def get(self,value):
+      
+        offset = 1
+        limit = 100
+
+        
+
+        if "offset" in request.args:
+            offset = request.args.get('offset',default = 1, type = int)
+
+        if "limit" in request.args:
+            limit = request.args.get('limit',default = 100, type = int)
+
+
+        moves = ReportesModel.get_all_reports_by_like(value,offset,limit)
+        if not moves:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        serialized_device = reportes_schema.dump(moves.items,many=True)
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3")
