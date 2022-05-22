@@ -53,7 +53,7 @@ class LugaresModel(db.Model):
     
     @staticmethod
     def get_lugar_by_like(value,offset,limit):
-        return LugaresModel.query.filter(LugaresModel.lugar.ilike(f'%{value}%') ).order_by(LugaresModel.id).paginate(offset,limit,error_out=False)
+        return LugaresModel.query.with_entities(LugaresModel.id).filter(LugaresModel.lugar.ilike(f'%{value}%') ).order_by(LugaresModel.id).paginate(offset,limit,error_out=False)
 
     def __repr(self):
         return '<id {}>'.format(self.id)

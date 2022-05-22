@@ -9,7 +9,7 @@ from . import db
 from sqlalchemy import Date,cast
 from .LugaresModel import LugaresSchema,LugaresModel
 from .DispositivosModel import DispositivosSchema,DispositivosModel
-from .UsuariosModel import UsuariosSchema
+from .UsuariosModel import UsuariosModel, UsuariosSchema
 from .TipoMovimientosModel import TipoMoveSchema
 from sqlalchemy import or_
 class MovimientosModel(db.Model):
@@ -99,17 +99,30 @@ class MovimientosModel(db.Model):
 
     @staticmethod
     def get_all_movimientos_by_like(value,offset=1,limit=10):
-        lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=3)
-        idlugar=0
-        if len(lugar.items)!=0:
-            idlugar = lugar.items[0].id
-        
-        device = DispositivosModel.get_device_by_codigo_like(value,offset=1,limit=3)
-        iddevice=0
-        if len(device.items)!=0:
-            iddevice = device.items[0].id
+        lugares=[]
+        devices=[]
+        users=[]
 
-        result = MovimientosModel.query.filter(or_(MovimientosModel.dispositivoId==iddevice, MovimientosModel.idMovimiento.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
+        lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
+        
+        if len(lugar.items)!=0:
+            for x in lugar.items:
+                lugares.append(x.id)
+        
+        device = DispositivosModel.get_device_by_codigo_like_entity(value,offset=1,limit=100)
+        
+        if len(device.items)!=0:
+            for x in device.items:
+                devices.append(x.id)
+        
+        user = UsuariosModel.get_user_by_params_like_entity(value,offset=1,limit=100)
+        
+        if len(user.items)!=0:
+            for x in user.items:
+                users.append(x.id)
+
+     
+        result = MovimientosModel.query.filter(or_(MovimientosModel.usuarioId.in_(users),MovimientosModel.dispositivoId.in_(devices),MovimientosModel.LugarId.in_(lugares), MovimientosModel.idMovimiento.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
         return result
 
 

@@ -8,7 +8,7 @@ from sqlalchemy import desc
 import sqlalchemy
 from . import db
 from sqlalchemy import Date,cast
-
+from sqlalchemy import or_
 class DispositivosModel(db.Model):
     """
     Catalogo Model
@@ -116,21 +116,24 @@ class DispositivosModel(db.Model):
     def get_device_by_codigo_like(value,offset,limit):
         return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') ).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
 
+    def get_device_by_codigo_like_entity(value,offset,limit):
+        return DispositivosModel.query.with_entities(DispositivosModel.id).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%'),DispositivosModel.serie.ilike(f'%{value}%')) ).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+
     @staticmethod
     def get_devices_by_like(value,offset=1,limit=100):
-        lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=3)
-        idlugar=0
+
+        lugares=[]
+      
+        lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
+        
         if len(lugar.items)!=0:
-            idlugar = lugar.items[0].id
+            for x in lugar.items:
+                lugares.append(x.id)
         
 
-        result = DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') | DispositivosModel.producto.ilike(f'%{value}%') | DispositivosModel.marca.ilike(f'%{value}%') | DispositivosModel.modelo.ilike(f'%{value}%') | DispositivosModel.serie.ilike(f'%{value}%') | DispositivosModel.accesorios.ilike(f'%{value}%')).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
-
-        if len(result.items)==0:
-
-            return DispositivosModel.query.filter(DispositivosModel.lugarId==idlugar).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
-        else:
-            return result
+        result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        return result
+     
 
     @staticmethod
     def get_devices_by_query(jsonFiltros,offset=1,limit=100):
