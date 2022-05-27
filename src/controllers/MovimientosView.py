@@ -139,7 +139,8 @@ def createMovements(data, listaObjetosCreados, listaErrores):
 
     dictDevice={
         "id":data.get("dispositivoId"),
-        "cantidad":diference
+        "cantidad":diference,
+        "lugarId":data.get("LugarId")
     }
 
 
