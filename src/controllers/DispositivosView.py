@@ -329,7 +329,7 @@ class DeviceFilter(Resource):
         serialized_device = dispositivos_schema.dump(devices.items,many=True)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3")
 
-@nsDevices.route("/filter")
+@nsDevices.route("/filterdevice")
 @nsDevices.expect(parser)
 @nsDevices.response(404, "equipo no encontrado")
 class DeviceFilterPost(Resource):
