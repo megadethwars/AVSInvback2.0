@@ -2,7 +2,7 @@
 from pkgutil import ModuleInfo
 from marshmallow import fields, Schema, validate
 import datetime
-from .StatusDevicesModel import StatusDevicesSchema
+from .StatusDevicesModel import StatusDevicesModel, StatusDevicesSchema
 from .LugaresModel import LugaresSchema,LugaresModel
 from sqlalchemy import desc
 import sqlalchemy
@@ -142,7 +142,7 @@ class DispositivosModel(db.Model):
 
         #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
         
-        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie).join(LugaresModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
 
         # lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
         
@@ -237,6 +237,7 @@ class DispositivosSchemaSomeFields(Schema):
     serie = fields.Str( validate=[validate.Length(max=100)])
     accesorios = fields.Str( validate=[validate.Length(max=100)])
     lugar = fields.Str( validate=[validate.Length(max=100)])
+    descripcion = fields.Str( validate=[validate.Length(max=100)])
 
 class DispositivosSchemaUpdate(Schema):
     """
