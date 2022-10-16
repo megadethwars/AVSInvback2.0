@@ -133,7 +133,27 @@ class DispositivosModel(db.Model):
 
         result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
         return result
-     
+    
+
+    @staticmethod
+    def get_devices_by_like_someFields(value,offset=1,limit=100):
+
+        lugares=[]
+
+        #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        
+        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie).join(LugaresModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+
+        # lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
+        
+        # if len(lugar.items)!=0:
+        #     for x in lugar.items:
+        #         lugares.append(x.id)
+        
+
+        # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        return result
+
 
     @staticmethod
     def get_devices_by_query(jsonFiltros,offset=1,limit=100):
@@ -188,6 +208,35 @@ class DispositivosSchema(Schema):
     fechaUltimaModificacion = fields.DateTime()
     serie = fields.Str( validate=[validate.Length(max=100)])
     accesorios = fields.Str( validate=[validate.Length(max=100)])
+
+class DispositivosSchemaSomeFields(Schema):
+    """
+    Catalogo Schema
+    """
+    id = fields.Int()
+    codigo = fields.Str(required=True, validate=[validate.Length(max=100)])
+    producto = fields.Str(required=True, validate=[validate.Length(max=100)])
+    marca = fields.Str(required=True, validate=[validate.Length(max=100)])
+    modelo = fields.Str(required=True, validate=[validate.Length(max=100)])
+    origen = fields.Str( validate=[validate.Length(max=100)])
+    foto = fields.Str()
+    cantidad = fields.Integer(required=True)
+    observaciones = fields.Str( validate=[validate.Length(max=250)])
+    lugarId = fields.Integer(required=True)
+    pertenece = fields.Str( validate=[validate.Length(max=45)])
+    descompostura = fields.Str( validate=[validate.Length(max=100)])
+    costo = fields.Integer()
+    compra = fields.Str( validate=[validate.Length(max=100)])
+    proveedor = fields.Str( validate=[validate.Length(max=100)])
+    idMov = fields.Str( validate=[validate.Length(max=500)])
+    statusId= fields.Integer(required=True)
+    lugar=fields.Nested(LugaresSchema)
+    status = fields.Nested(StatusDevicesSchema)
+    fechaAlta = fields.DateTime()
+    fechaUltimaModificacion = fields.DateTime()
+    serie = fields.Str( validate=[validate.Length(max=100)])
+    accesorios = fields.Str( validate=[validate.Length(max=100)])
+    lugar = fields.Str( validate=[validate.Length(max=100)])
 
 class DispositivosSchemaUpdate(Schema):
     """
