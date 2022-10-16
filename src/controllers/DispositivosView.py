@@ -413,3 +413,29 @@ class DeviceFilterPost(Resource):
 
         serialized_device = dispositivosSchemaSomeFields.dump(devices.items,many=True)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3")
+
+
+@nsDevices.route("/alldeviceSomeFields")
+@nsDevices.expect(parser)
+@nsDevices.response(404, "equipo no encontrado")
+class DeviceAllPostSomeFields(Resource):
+    
+    @nsDevices.doc("obtener todos los equipos, con pocos campos")
+    def get(self):
+      
+        offset = 1
+        limit = 100
+
+        if "offset" in request.args:
+            offset = request.args.get('offset',default = 1, type = int)
+
+        if "limit" in request.args:
+            limit = request.args.get('limit',default = 100, type = int)
+
+
+        devices = DispositivosModel.get_devices_someFields(offset,limit)
+        if not devices:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        serialized_device = dispositivosSchemaSomeFields.dump(devices.items,many=True)
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3")

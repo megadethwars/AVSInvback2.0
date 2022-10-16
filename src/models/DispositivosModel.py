@@ -154,6 +154,25 @@ class DispositivosModel(db.Model):
         # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
         return result
 
+    @staticmethod
+    def get_devices_someFields(offset=1,limit=100):
+
+        lugares=[]
+
+        #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        
+        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+
+        # lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
+        
+        # if len(lugar.items)!=0:
+        #     for x in lugar.items:
+        #         lugares.append(x.id)
+        
+
+        # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        return result
+
 
     @staticmethod
     def get_devices_by_query(jsonFiltros,offset=1,limit=100):
