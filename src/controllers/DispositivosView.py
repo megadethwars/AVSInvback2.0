@@ -414,7 +414,7 @@ class DeviceFilterPost(Resource):
         serialized_device = dispositivosSchemaSomeFields.dump(devices.items,many=True)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3")
 
-    @nsDevices.doc("obtener varios equipos, filtro con pocoas campos")
+    @nsDevices.doc("obtener varios equipos, filtro con pocos campos")
     def get(self):
       
         offset = 1

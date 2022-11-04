@@ -1,4 +1,4 @@
-# app/src/models/CatalogoModel.py
+
 from enum import unique
 from pkgutil import ModuleInfo
 from marshmallow import fields, Schema, validate
@@ -10,8 +10,9 @@ from sqlalchemy import Date,cast
 from .LugaresModel import LugaresSchema,LugaresModel
 from .DispositivosModel import DispositivosSchema,DispositivosModel
 from .UsuariosModel import UsuariosModel, UsuariosSchema
-from .TipoMovimientosModel import TipoMoveSchema
+from .TipoMovimientosModel import TipoMoveModel, TipoMoveSchema
 from sqlalchemy import or_
+from sqlalchemy.orm import aliased
 class MovimientosModel(db.Model):
     """
     Catalogo Model
@@ -162,6 +163,83 @@ class MovimientosModel(db.Model):
     def __repr(self):
         return '<id {}>'.format(self.id)
 
+
+
+
+    @staticmethod
+    def get_movements_by_like_someFields(value,offset=1,limit=100):
+
+        # LugarAlias = aliased(LugaresModel)
+        # result = MovimientosModel.query.with_entities(
+        #         MovimientosModel.idMovimiento,
+        #         MovimientosModel.fechaAlta,
+        #         DispositivosModel.codigo,
+        #         DispositivosModel.producto,
+        #         UsuariosModel.nombre,
+        #         TipoMoveModel.tipo
+        #         ).join(DispositivosModel
+        #         ).join(UsuariosModel
+        #         ).join(TipoMoveModel
+        #         ).join(LugarAlias, LugarAlias.id == MovimientosModel.LugarId
+        #         ).filter(
+        #             or_(MovimientosModel.idMovimiento.ilike(f'%{value}%'),
+        #             DispositivosModel.codigo.ilike(f'%{value}%'),
+        #             DispositivosModel.producto.ilike(f'%{value}%'),
+        #             UsuariosModel.nombre.ilike(f'%{value}%'),
+        #             UsuariosModel.username.ilike(f'%{value}%'),
+        #             TipoMoveModel.tipo.ilike(f'%{value}%'),
+        #             LugarAlias.lugar.ilike(f'%{value}%'),
+        #             TipoMoveModel.fechaAlta.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False)
+
+        # result = MovimientosModel.query(
+        #         MovimientosModel.idMovimiento,
+        #         MovimientosModel.fechaAlta,
+        #         DispositivosModel.codigo,
+        #         DispositivosModel.producto,
+        #         UsuariosModel.nombre,
+        #         TipoMoveModel.tipo,
+        #         MovimientosModel.LugarId
+        #         #func.group_concat(func.distinct(LugarAlias.lugar)).label('lugarMov')
+        #         ).join(DispositivosModel
+        #         ).join(UsuariosModel
+        #         ).join(TipoMoveModel
+        #         ).join(LugaresModel, LugaresModel.id == MovimientosModel.LugarId
+        #         ).filter(
+        #             or_(MovimientosModel.idMovimiento.ilike(f'%{value}%'),
+        #             DispositivosModel.codigo.ilike(f'%{value}%'),
+        #             DispositivosModel.producto.ilike(f'%{value}%'),
+        #             UsuariosModel.nombre.ilike(f'%{value}%'),
+        #             UsuariosModel.username.ilike(f'%{value}%'),
+        #             TipoMoveModel.tipo.ilike(f'%{value}%'),
+        #             LugaresModel.lugar.ilike(f'%{value}%'),
+        #             TipoMoveModel.fechaAlta.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False)
+        if offset<0:
+            offset=0
+        
+        query = "select idMovimiento,codigo,producto,lugar,tipo,nombre,username,invMovimientos.fechaAlta from invMovimientos inner join invDispositivos on invMovimientos.dispositivoId = invDispositivos.id inner join invLugares on invMovimientos.LugarId = invLugares.id inner join invTipoMoves on invMovimientos.tipoMovId = invTipoMoves.id inner join invUsuarios on invMovimientos.usuarioId = invUsuarios.id where codigo like '%"+value+"%' or producto like '%"+value+"%' or lugar like '%"+value+"%' or nombre like '%"+value+"%' or idMovimiento like '%"+value+"%' order by invMovimientos.id asc offset " +str(offset-1)+ " rows fetch next "+str(limit)+" rows only"
+        result = db.session.execute(query)
+        listOutput = []
+        if result:
+            for res in result:
+                print(res)
+                output={}
+                output['idMovimiento']=res[0]
+                output['codigo']=res[1]
+                output['producto']=res[2]
+                output['lugar']=res[3]
+                output['tipo']=res[4]
+                output['nombre']=res[5]
+                output['username']=res[6]
+                output['fechaAlta']=res[7]
+
+                listOutput.append(output)
+        else:
+            return listOutput
+        
+        return listOutput
+
+
+
 class MovimientosSchema(Schema):
     """
     Catalogo Schema
@@ -212,3 +290,21 @@ class MovimientosSchemaQuery(Schema):
     LugarId = fields.Integer(required=True)
     fechaAltaRangoInicio=fields.Date()
     fechaAltaRangoFin=fields.Date()
+
+
+class MovimientosSchemaSomeFields(Schema):
+    """
+    Catalogo Schema
+    """
+
+    codigo = fields.Str(required=True, validate=[validate.Length(max=100)])
+    producto = fields.Str(required=True, validate=[validate.Length(max=100)])
+
+    fechaAlta = fields.DateTime()
+  
+    idMovimiento = fields.Str( validate=[validate.Length(max=200)])
+    lugar = fields.Str( validate=[validate.Length(max=100)])
+    tipo = fields.Str( validate=[validate.Length(max=100)])
+    nombre = fields.Str( validate=[validate.Length(max=100)])
+    username = fields.Str( validate=[validate.Length(max=100)])
+  

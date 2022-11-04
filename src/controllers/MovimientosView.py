@@ -7,7 +7,7 @@ from flask import Flask, request, json, Response, Blueprint, g
 from marshmallow import ValidationError
 from sqlalchemy import true
 
-from ..models.MovimentosModel import MovimientosModel, MovimientosSchema,MovimientosSchemaUpdate,MovimientosSchemaQuery
+from ..models.MovimentosModel import MovimientosModel, MovimientosSchema,MovimientosSchemaUpdate,MovimientosSchemaQuery,MovimientosSchemaSomeFields
 from ..models.LugaresModel import LugaresModel
 from ..models.UsuariosModel import UsuariosModel
 from ..models.DispositivosModel import DispositivosModel
@@ -26,6 +26,7 @@ movimientos_api = Blueprint("movimientos_api", __name__)
 movimientos_schema = MovimientosSchema()
 movimientos_schema_update = MovimientosSchemaUpdate()
 movimientos_schema_query = MovimientosSchemaQuery()
+movimientosschemasomefields = MovimientosSchemaSomeFields()
 api = Api(movimientos_api)
 
 nsMovements = api.namespace("movimientos", description="API operations for movimientos")
@@ -360,3 +361,33 @@ class MovementFilter(Resource):
 
         serialized_device = movimientos_schema.dump(moves.items,many=True)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3")
+
+
+@nsMovements.route("/filtermovementFields")
+@nsMovements.expect(parser)
+@nsMovements.response(404, "movimiento no encontrado")
+class DeviceFilterPost(Resource):
+    
+
+    @nsMovements.doc("obtener varios movimientos, filtro con pocos campos")
+    def get(self):
+      
+        offset = 1
+        limit = 100
+
+        value=""
+        if "value" in request.headers:
+            value =request.headers['value']
+
+     
+        if "offset" in request.args:
+            offset = request.args.get('offset',default = 1, type = int)
+
+        if "limit" in request.args:
+            limit = request.args.get('limit',default = 100, type = int)
+
+
+        devices = MovimientosModel.get_movements_by_like_someFields(value,offset,limit)
+
+        serialized_movements = movimientosschemasomefields.dump(devices,many=True)
+        return returnCodes.custom_response(serialized_movements, 200, "TPM-3")
