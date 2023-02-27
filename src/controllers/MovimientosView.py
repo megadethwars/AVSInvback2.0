@@ -366,7 +366,7 @@ class MovementFilter(Resource):
 @nsMovements.route("/filtermovementFields")
 @nsMovements.expect(parser)
 @nsMovements.response(404, "movimiento no encontrado")
-class DeviceFilterPost(Resource):
+class MovementFilterPost(Resource):
     
 
     @nsMovements.doc("obtener varios movimientos, filtro con pocos campos")
