@@ -98,12 +98,12 @@ class UsuariosModel(db.Model):
 
     @staticmethod
     def get_users_by_query(jsonFiltros,offset=1,limit=100):
-        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
-        return UsuariosModel.query.filter_by(**jsonFiltros).order_by(UsuariosModel.id).paginate(offset,limit,error_out=False) 
+        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(page=offset,per_page=limit,error_out=False)
+        return UsuariosModel.query.filter_by(**jsonFiltros).order_by(UsuariosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
     
     staticmethod
     def get_user_by_params_like_entity(value,offset,limit):
-        return UsuariosModel.query.with_entities(UsuariosModel.id).filter(or_(UsuariosModel.username.ilike(f'%{value}%'),UsuariosModel.nombre.ilike(f'%{value}%') , UsuariosModel.apellidoPaterno.ilike(f'%{value}%') , UsuariosModel.apellidoMaterno.ilike(f'%{value}%')) ).order_by(UsuariosModel.id).paginate(offset,limit,error_out=False)
+        return UsuariosModel.query.with_entities(UsuariosModel.id).filter(or_(UsuariosModel.username.ilike(f'%{value}%'),UsuariosModel.nombre.ilike(f'%{value}%') , UsuariosModel.apellidoPaterno.ilike(f'%{value}%') , UsuariosModel.apellidoMaterno.ilike(f'%{value}%')) ).order_by(UsuariosModel.id).paginate(page=offset,per_page=limit,error_out=False)
 
     def __repr(self):
         return '<id {}>'.format(self.id)

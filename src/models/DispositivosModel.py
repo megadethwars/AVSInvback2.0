@@ -97,7 +97,7 @@ class DispositivosModel(db.Model):
 
     @staticmethod
     def get_all_devices(offset=1,limit=10):
-        return DispositivosModel.query.order_by(DispositivosModel.id).paginate(offset,limit,error_out=False) 
+        return DispositivosModel.query.order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
 
 
     @staticmethod
@@ -114,10 +114,10 @@ class DispositivosModel(db.Model):
     
     @staticmethod
     def get_device_by_codigo_like(value,offset,limit):
-        return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') ).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') ).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
 
     def get_device_by_codigo_like_entity(value,offset,limit):
-        return DispositivosModel.query.with_entities(DispositivosModel.id).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%'),DispositivosModel.serie.ilike(f'%{value}%')) ).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        return DispositivosModel.query.with_entities(DispositivosModel.id).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%'),DispositivosModel.serie.ilike(f'%{value}%')) ).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
 
     @staticmethod
     def get_devices_by_like(value,offset=1,limit=100):
@@ -131,7 +131,7 @@ class DispositivosModel(db.Model):
                 lugares.append(x.id)
         
 
-        result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         return result
     
 
@@ -140,10 +140,10 @@ class DispositivosModel(db.Model):
 
         lugares=[]
 
-        #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         
-        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
-
+        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        rows = result.total
         # lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
         
         # if len(lugar.items)!=0:
@@ -151,18 +151,18 @@ class DispositivosModel(db.Model):
         #         lugares.append(x.id)
         
 
-        # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
-        return result
+        # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        return result,rows
 
     @staticmethod
     def get_devices_someFields(offset=1,limit=100):
 
         lugares=[]
 
-        #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
+        #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         
-        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
-
+        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        rows = result.total
         # lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
         
         # if len(lugar.items)!=0:
@@ -170,14 +170,14 @@ class DispositivosModel(db.Model):
         #         lugares.append(x.id)
         
 
-        # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False)
-        return result
+        # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        return result,rows
 
 
     @staticmethod
     def get_devices_by_query(jsonFiltros,offset=1,limit=100):
-        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
-        return DispositivosModel.query.filter_by(**jsonFiltros).order_by(DispositivosModel.id).paginate(offset,limit,error_out=False) 
+        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(page=offset,per_page=limit,error_out=False)
+        return DispositivosModel.query.filter_by(**jsonFiltros).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
 
 
         if "fechaAltaRangoInicio" in jsonFiltros and "fechaAltaRangoFin" in jsonFiltros:
@@ -187,15 +187,15 @@ class DispositivosModel(db.Model):
             del jsonFiltros["fechaAltaRangoFin"]
             alta = alta+"T00:00:00.000000"
             end = end + "T23:59:59.999999"
-            return ComercioModel.query.filter_by(**jsonFiltros).filter(ComercioModel.fechaAlta >= alta).filter(ComercioModel.fechaAlta <= end).paginate(offset,limit,error_out=False),rows
+            return ComercioModel.query.filter_by(**jsonFiltros).filter(ComercioModel.fechaAlta >= alta).filter(ComercioModel.fechaAlta <= end).paginate(page=offset,per_page=limit,error_out=False),rows
         
         elif "fechaAltaRangoInicio" in jsonFiltros:
             alta = jsonFiltros["fechaAltaRangoInicio"]
             del jsonFiltros["fechaAltaRangoInicio"]
-            return ComercioModel.query.filter_by(**jsonFiltros).filter(cast(ComercioModel.fechaAlta,Date) == alta).paginate(offset,limit,error_out=False),rows
+            return ComercioModel.query.filter_by(**jsonFiltros).filter(cast(ComercioModel.fechaAlta,Date) == alta).paginate(page=offset,per_page=limit,error_out=False),rows
         
         else:
-            return ComercioModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False),rows
+            return ComercioModel.query.filter_by(**jsonFiltros).paginate(page=offset,per_page=limit,error_out=False),rows
 
     def __repr(self):
         return '<id {}>'.format(self.id)

@@ -101,13 +101,13 @@ class ReportesModel(db.Model):
                 users.append(x.id)
 
      
-        result = ReportesModel.query.filter(or_(ReportesModel.usuarioId.in_(users),ReportesModel.dispositivoId.in_(devices), ReportesModel.comentarios.ilike(f'%{value}%'))).order_by(ReportesModel.id).paginate(offset,limit,error_out=False) 
+        result = ReportesModel.query.filter(or_(ReportesModel.usuarioId.in_(users),ReportesModel.dispositivoId.in_(devices), ReportesModel.comentarios.ilike(f'%{value}%'))).order_by(ReportesModel.id).paginate(page=offset,per_page=limit,error_out=False) 
         return result
 
 
     @staticmethod
     def get_reportes_by_query(jsonFiltros,offset=1,limit=5):
-        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
+        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(page=offset,per_page=limit,error_out=False)
         #return ReportesModel.query.filter_by(**jsonFiltros).order_by(ReportesModel.id).offset(offset).limit(limit).all()
 
 
@@ -118,15 +118,15 @@ class ReportesModel(db.Model):
             del jsonFiltros["fechaAltaRangoFin"]
             alta = alta+" 00:00:00.000"
             end = end + " 23:59:59.999"
-            return ReportesModel.query.filter_by(**jsonFiltros).filter(ReportesModel.fechaAlta >= alta).filter(ReportesModel.fechaAlta <= end).order_by(ReportesModel.id).paginate(offset,limit,error_out=False)
+            return ReportesModel.query.filter_by(**jsonFiltros).filter(ReportesModel.fechaAlta >= alta).filter(ReportesModel.fechaAlta <= end).order_by(ReportesModel.id).paginate(page=offset,per_page=limit,error_out=False)
         
         elif "fechaAltaRangoInicio" in jsonFiltros:
             alta = jsonFiltros["fechaAltaRangoInicio"]
             del jsonFiltros["fechaAltaRangoInicio"]
-            return ReportesModel.query.filter_by(**jsonFiltros).filter(cast(ReportesModel.fechaAlta,Date) == alta).order_by(ReportesModel.id).paginate(offset,limit,error_out=False)
+            return ReportesModel.query.filter_by(**jsonFiltros).filter(cast(ReportesModel.fechaAlta,Date) == alta).order_by(ReportesModel.id).paginate(page=offset,per_page=limit,error_out=False)
         
         else:
-            return ReportesModel.query.filter_by(**jsonFiltros).order_by(ReportesModel.id).paginate(offset,limit,error_out=False)
+            return ReportesModel.query.filter_by(**jsonFiltros).order_by(ReportesModel.id).paginate(page=offset,per_page=limit,error_out=False)
 
     def __repr(self):
         return '<id {}>'.format(self.id)

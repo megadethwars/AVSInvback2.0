@@ -95,7 +95,7 @@ class MovimientosModel(db.Model):
 
     @staticmethod
     def get_all_movimientos(offset=1,limit=10):
-        return MovimientosModel.query.order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
+        return MovimientosModel.query.order_by(MovimientosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
 
 
     @staticmethod
@@ -123,7 +123,7 @@ class MovimientosModel(db.Model):
                 users.append(x.id)
 
      
-        result = MovimientosModel.query.filter(or_(MovimientosModel.usuarioId.in_(users),MovimientosModel.dispositivoId.in_(devices),MovimientosModel.LugarId.in_(lugares), MovimientosModel.idMovimiento.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
+        result = MovimientosModel.query.filter(or_(MovimientosModel.usuarioId.in_(users),MovimientosModel.dispositivoId.in_(devices),MovimientosModel.LugarId.in_(lugares), MovimientosModel.idMovimiento.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
         return result
 
 
@@ -139,8 +139,8 @@ class MovimientosModel(db.Model):
 
     @staticmethod
     def get_movimientos_by_query(jsonFiltros,offset=1,limit=5):
-        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(offset,limit,error_out=False)
-        #return MovimientosModel.query.filter_by(**jsonFiltros).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False) 
+        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(page=offset,per_page=limit,error_out=False)
+        #return MovimientosModel.query.filter_by(**jsonFiltros).order_by(MovimientosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
 
 
         if "fechaAltaRangoInicio" in jsonFiltros and "fechaAltaRangoFin" in jsonFiltros:
@@ -150,15 +150,15 @@ class MovimientosModel(db.Model):
             del jsonFiltros["fechaAltaRangoFin"]
             alta = alta+"T00:00:00.000"
             end = end + "T23:59:59.999"
-            return MovimientosModel.query.filter_by(**jsonFiltros).filter(MovimientosModel.fechaAlta >= alta).order_by(MovimientosModel.id).filter(MovimientosModel.fechaAlta <= end).paginate(offset,limit,error_out=False)
+            return MovimientosModel.query.filter_by(**jsonFiltros).filter(MovimientosModel.fechaAlta >= alta).order_by(MovimientosModel.id).filter(MovimientosModel.fechaAlta <= end).paginate(page=offset,per_page=limit,error_out=False)
         
         elif "fechaAltaRangoInicio" in jsonFiltros:
             alta = jsonFiltros["fechaAltaRangoInicio"]
             del jsonFiltros["fechaAltaRangoInicio"]
-            return MovimientosModel.query.filter_by(**jsonFiltros).filter(cast(MovimientosModel.fechaAlta,Date) == alta).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False)
+            return MovimientosModel.query.filter_by(**jsonFiltros).filter(cast(MovimientosModel.fechaAlta,Date) == alta).order_by(MovimientosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         
         else:
-            return MovimientosModel.query.filter_by(**jsonFiltros).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False)
+            return MovimientosModel.query.filter_by(**jsonFiltros).order_by(MovimientosModel.id).paginate(page=offset,per_page=limit,error_out=False)
 
     def __repr(self):
         return '<id {}>'.format(self.id)
@@ -189,7 +189,7 @@ class MovimientosModel(db.Model):
         #             UsuariosModel.username.ilike(f'%{value}%'),
         #             TipoMoveModel.tipo.ilike(f'%{value}%'),
         #             LugarAlias.lugar.ilike(f'%{value}%'),
-        #             TipoMoveModel.fechaAlta.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False)
+        #             TipoMoveModel.fechaAlta.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(page=offset,per_page=limit,error_out=False)
 
         # result = MovimientosModel.query(
         #         MovimientosModel.idMovimiento,
@@ -212,7 +212,7 @@ class MovimientosModel(db.Model):
         #             UsuariosModel.username.ilike(f'%{value}%'),
         #             TipoMoveModel.tipo.ilike(f'%{value}%'),
         #             LugaresModel.lugar.ilike(f'%{value}%'),
-        #             TipoMoveModel.fechaAlta.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(offset,limit,error_out=False)
+        #             TipoMoveModel.fechaAlta.ilike(f'%{value}%'))).order_by(MovimientosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         if offset<0:
             offset=0
         

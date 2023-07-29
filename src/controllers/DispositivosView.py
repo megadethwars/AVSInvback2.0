@@ -432,12 +432,12 @@ class DeviceFilterPost(Resource):
             limit = request.args.get('limit',default = 100, type = int)
 
 
-        devices = DispositivosModel.get_devices_by_like_someFields(value,offset,limit)
+        devices,rows = DispositivosModel.get_devices_by_like_someFields(value,offset,limit)
         if not devices:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
         serialized_device = dispositivosSchemaSomeFields.dump(devices.items,many=True)
-        return returnCodes.custom_response(serialized_device, 200, "TPM-3")
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3","",[],True,rows)
 
 
 @nsDevices.route("/alldeviceSomeFields")
@@ -458,9 +458,9 @@ class DeviceAllPostSomeFields(Resource):
             limit = request.args.get('limit',default = 100, type = int)
 
 
-        devices = DispositivosModel.get_devices_someFields(offset,limit)
+        devices,rows = DispositivosModel.get_devices_someFields(offset,limit)
         if not devices:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
         serialized_device = dispositivosSchemaSomeFields.dump(devices.items,many=True)
-        return returnCodes.custom_response(serialized_device, 200, "TPM-3")
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3",True,rows)
