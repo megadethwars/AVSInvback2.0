@@ -154,7 +154,7 @@ class ReportesSchemaUpdate(Schema):
     dispositivoId = fields.Integer()
     usuarioId = fields.Integer()
     comentarios = fields.Str()
-    foto = fields.Str( validate=[validate.Length(max=500)])
+    foto = fields.Str()
     fechaAlta = fields.DateTime()
     fechaUltimaModificacion = fields.DateTime()
 
