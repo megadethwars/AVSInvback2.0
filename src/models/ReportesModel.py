@@ -139,7 +139,7 @@ class ReportesSchema(Schema):
     dispositivoId = fields.Integer(required=True)
     usuarioId = fields.Integer(required=True)
     comentarios = fields.Str()
-    foto = fields.Str( validate=[validate.Length(max=500)])
+    foto = fields.Str()
     dispositivo = fields.Nested(DispositivosSchema)
     usuario = fields.Nested(UsuariosSchema)
     fechaAlta = fields.DateTime()
