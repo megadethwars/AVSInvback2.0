@@ -9,6 +9,8 @@ import sqlalchemy
 from . import db
 from sqlalchemy import Date,cast
 from sqlalchemy import or_
+from sqlalchemy.sql.expression import func
+
 class DispositivosModel(db.Model):
     """
     Catalogo Model
@@ -138,20 +140,57 @@ class DispositivosModel(db.Model):
     @staticmethod
     def get_devices_by_like_someFields(value,offset=1,limit=100):
 
-        lugares=[]
-
-        #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        ##inicio de segundo algoritmo
         
+        # if value == "":
+        #     return None,0
+        # terminos = value.split()
+
+        
+        # lugares=[LugaresModel.lugar.ilike(f'%{termino}%') for termino in terminos]
+        # codigo = [DispositivosModel.codigo.ilike(f'%{termino}%') for termino in terminos]
+        # producto = [DispositivosModel.producto.ilike(f'%{termino}%') for termino in terminos]
+        # marca = [DispositivosModel.marca.ilike(f'%{termino}%') for termino in terminos]
+        # modelo = [DispositivosModel.modelo.ilike(f'%{termino}%') for termino in terminos]
+        # serie = [DispositivosModel.serie.ilike(f'%{termino}%') for termino in terminos]
+        # accesorios =[DispositivosModel.accesorios.ilike(f'%{termino}%') for termino in terminos]
+
+        # if len(terminos)>1:
+        #     distancia_minima = func.levenshtein(func.array(*terminos), func.array(DispositivosModel.producto,
+        #                                                                       DispositivosModel.marca,
+        #                                                                       DispositivosModel.modelo,
+        #                                                                       DispositivosModel.serie,
+        #                                                                       DispositivosModel.codigo
+        #                                                                       ))
+            
+        #     print(distancia_minima)
+
+        # result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,
+        #                                                             DispositivosModel.producto,
+        #                                                             LugaresModel.lugar,
+        #                                                             DispositivosModel.codigo,
+        #                                                             DispositivosModel.marca,
+        #                                                             DispositivosModel.modelo,
+        #                                                             DispositivosModel.serie,
+        #                                                             StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(*lugares,
+        #                                                                                                                                                     *codigo,
+        #                                                                                                                                                     *producto,
+        #                                                                                                                                                     *marca,
+        #                                                                                                                                                     *modelo,
+        #                                                                                                                                                     *serie,
+        #                                                                                                                                                     *accesorios)).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+
         result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         rows = result.total
-        # lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
-        
-        # if len(lugar.items)!=0:
-        #     for x in lugar.items:
-        #         lugares.append(x.id)
+        return result,rows
+    
+    @staticmethod
+    def get_devices_by_like_minimunFields(value,offset=1,limit=100):
+
         
 
-        # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,DispositivosModel.codigo,DispositivosModel.modelo,StatusDevicesModel.descripcion).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') )).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+        rows = result.total
         return result,rows
 
     @staticmethod

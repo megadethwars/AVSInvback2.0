@@ -377,7 +377,7 @@ class DeviceFilterPost(Resource):
         serialized_device = dispositivos_schema.dump(devices.items,many=True)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3")
 
-## filtro con pocos campos
+## filtro con pocos campos, usado tambien en inventario para busquedas
 @nsDevices.route("/filterdeviceFields")
 @nsDevices.expect(parser)
 @nsDevices.response(404, "equipo no encontrado")
@@ -440,6 +440,41 @@ class DeviceFilterPost(Resource):
         return returnCodes.custom_response(serialized_device, 200, "TPM-3","",[],True,rows)
 
 
+'''filtro con campos minimos, para entrada y salida de equipos'''
+@nsDevices.route("/filterdeviceminFields")
+@nsDevices.expect(parser)
+@nsDevices.response(404, "equipo no encontrado")
+class DeviceFilterMin(Resource):
+
+
+    @nsDevices.doc("obtener varios equipos, filtro con pocos campos")
+    def get(self):
+      
+        offset = 1
+        limit = 100
+
+        value=""
+        if "value" in request.headers:
+            value =request.headers['value']
+
+     
+        if "offset" in request.args:
+            offset = request.args.get('offset',default = 1, type = int)
+
+        if "limit" in request.args:
+            limit = request.args.get('limit',default = 100, type = int)
+
+
+        devices,rows = DispositivosModel.get_devices_by_like_minimunFields(value,offset,limit)
+        if not devices:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+        serialized_device = dispositivosSchemaSomeFields.dump(devices.items,many=True)
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3","",[],True,rows)
+
+
+
+#usado para el inventario principal
 @nsDevices.route("/alldeviceSomeFields")
 @nsDevices.expect(parser)
 @nsDevices.response(404, "equipo no encontrado")
@@ -464,3 +499,4 @@ class DeviceAllPostSomeFields(Resource):
 
         serialized_device = dispositivosSchemaSomeFields.dump(devices.items,many=True)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3",True,rows)
+    
