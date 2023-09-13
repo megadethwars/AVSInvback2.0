@@ -189,7 +189,7 @@ class DispositivosModel(db.Model):
 
         
 
-        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,DispositivosModel.codigo,DispositivosModel.modelo,StatusDevicesModel.descripcion).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') )).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,DispositivosModel.codigo,DispositivosModel.modelo,DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') )).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
         rows = result.total
         return result,rows
 
