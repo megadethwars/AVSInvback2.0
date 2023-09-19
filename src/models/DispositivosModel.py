@@ -185,11 +185,37 @@ class DispositivosModel(db.Model):
         return result,rows
     
     @staticmethod
-    def get_devices_by_like_minimunFields(value,offset=1,limit=100):
+    def get_devices_by_like_minimunFields(value,offset=1,limit=100,inStorage=0):
 
         
+        if inStorage==1:
+            result = db.session.query(DispositivosModel).with_entities(
+                DispositivosModel.id,
+                DispositivosModel.producto,
+                DispositivosModel.codigo,
+                DispositivosModel.modelo,
+                DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
+                                                        DispositivosModel.producto.ilike(f'%{value}%'),
+                                                        DispositivosModel.modelo.ilike(f'%{value}%') )).filter(DispositivosModel.lugarId == 1).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+        elif inStorage==2:
+            result = db.session.query(DispositivosModel).with_entities(
+                DispositivosModel.id,
+                DispositivosModel.producto,
+                DispositivosModel.codigo,
+                DispositivosModel.modelo,
+                DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
+                                                        DispositivosModel.producto.ilike(f'%{value}%'),
+                                                        DispositivosModel.modelo.ilike(f'%{value}%') )).filter(DispositivosModel.lugarId != 1).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+        else:
+            result = db.session.query(DispositivosModel).with_entities(
+                DispositivosModel.id,
+                DispositivosModel.producto,
+                DispositivosModel.codigo,
+                DispositivosModel.modelo,
+                DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
+                                                        DispositivosModel.producto.ilike(f'%{value}%'),
+                                                        DispositivosModel.modelo.ilike(f'%{value}%') )).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
 
-        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,DispositivosModel.codigo,DispositivosModel.modelo,DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') )).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
         rows = result.total
         return result,rows
 

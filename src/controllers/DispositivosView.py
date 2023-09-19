@@ -16,6 +16,12 @@ app = Flask(__name__)
 parser = reqparse.RequestParser()
 parser.add_argument('limit', type=int, location='args')
 parser.add_argument('offset', type=int, location='args')
+
+parserMinDevices = reqparse.RequestParser()
+parserMinDevices.add_argument('limit', type=int, location='args')
+parserMinDevices.add_argument('offset', type=int, location='args')
+parserMinDevices.add_argument('inStorage', type=int, location='args')
+parserMinDevices.add_argument('value', type=str, location='headers')
 Device_api = Blueprint("devices_api", __name__)
 dispositivos_schema = DispositivosSchema()
 dispositivos_schema_update = DispositivosSchemaUpdate()
@@ -23,7 +29,13 @@ dispositivos_schema_query = DispositivosSchemaQuery()
 dispositivosSchemaSomeFields = DispositivosSchemaSomeFields()
 api = Api(Device_api)
 
-nsDevices = api.namespace("devices", description="API operations for usuarios")
+nsDevices = api.namespace("devices", description="API operations for devices")
+
+
+header_model = nsDevices.model("CustomHeaders", {
+    "Header1": fields.String(description="Descripción del header 1"),
+    "Header2": fields.String(description="Descripción del header 2"),
+})
 
 DevicesQueryModel = nsDevices.model(
     "dispositivos",
@@ -442,17 +454,19 @@ class DeviceFilterPost(Resource):
 
 '''filtro con campos minimos, para entrada y salida de equipos'''
 @nsDevices.route("/filterdeviceminFields")
-@nsDevices.expect(parser)
+@nsDevices.expect(parserMinDevices)
 @nsDevices.response(404, "equipo no encontrado")
 class DeviceFilterMin(Resource):
 
 
-    @nsDevices.doc("obtener varios equipos, filtro con pocos campos")
+    @nsDevices.doc("obtener varios equipos, filtro con minimos campos")
+    @nsDevices.header("value", "el texto de filtro a buscar", required=True)  # Agrega los encabezados aquí
+    
     def get(self):
       
         offset = 1
         limit = 100
-
+        inStorage=0
         value=""
         if "value" in request.headers:
             value =request.headers['value']
@@ -464,8 +478,11 @@ class DeviceFilterMin(Resource):
         if "limit" in request.args:
             limit = request.args.get('limit',default = 100, type = int)
 
+        if "inStorage" in request.args:
+            inStorage = request.args.get('inStorage',default = 100, type = int)
 
-        devices,rows = DispositivosModel.get_devices_by_like_minimunFields(value,offset,limit)
+
+        devices,rows = DispositivosModel.get_devices_by_like_minimunFields(value,offset,limit,inStorage)
         if not devices:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
