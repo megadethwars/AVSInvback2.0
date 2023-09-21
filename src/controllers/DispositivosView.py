@@ -490,6 +490,36 @@ class DeviceFilterMin(Resource):
         return returnCodes.custom_response(serialized_device, 200, "TPM-3","",[],True,rows)
 
 
+'''filtro con campos minimos, para entrada y salida de equipos'''
+@nsDevices.route("/filterdeviceByCodigo")
+@nsDevices.expect(parserMinDevices)
+@nsDevices.response(404, "equipo no encontrado")
+class DeviceFilterByCodigo(Resource):
+
+
+    @nsDevices.doc("obtener varios equipos, filtro con minimos campos")
+    @nsDevices.header("value", "el texto de filtro a buscar", required=True)  # Agrega los encabezados aquí
+    
+    def get(self):
+      
+        offset = 1
+        limit = 100
+        inStorage=0
+        value=""
+        if "value" in request.headers:
+            value =request.headers['value']
+
+     
+        
+
+        devices = DispositivosModel.get_devices_by_codigo(value)
+
+        if not devices:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+        #return catalogos
+        serialized_devices = dispositivos_schema.dump(devices, many=False)
+        return returnCodes.custom_response(serialized_devices, 200, "TPM-3")
+
 
 #usado para el inventario principal
 @nsDevices.route("/alldeviceSomeFields")
