@@ -187,7 +187,18 @@ class DispositivosModel(db.Model):
     @staticmethod
     def get_devices_by_like_minimunFields(value,offset=1,limit=100,inStorage=0):
 
-        
+        result = db.session.query(DispositivosModel).with_entities(
+                DispositivosModel.id,
+                DispositivosModel.producto,
+                DispositivosModel.codigo,
+                DispositivosModel.modelo,
+                DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
+                                                        DispositivosModel.producto.ilike(f'%{value}%'),
+                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+
+        rows = result.total
+        return result,rows
+
         if inStorage==1:
             result = db.session.query(DispositivosModel).with_entities(
                 DispositivosModel.id,
@@ -196,7 +207,7 @@ class DispositivosModel(db.Model):
                 DispositivosModel.modelo,
                 DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
                                                         DispositivosModel.producto.ilike(f'%{value}%'),
-                                                        DispositivosModel.modelo.ilike(f'%{value}%') )).filter(DispositivosModel.lugarId == 1).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).filter(DispositivosModel.lugarId == 1).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
         elif inStorage==2:
             result = db.session.query(DispositivosModel).with_entities(
                 DispositivosModel.id,
@@ -205,7 +216,7 @@ class DispositivosModel(db.Model):
                 DispositivosModel.modelo,
                 DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
                                                         DispositivosModel.producto.ilike(f'%{value}%'),
-                                                        DispositivosModel.modelo.ilike(f'%{value}%') )).filter(DispositivosModel.lugarId != 1).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).filter(DispositivosModel.lugarId != 1).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
         else:
             result = db.session.query(DispositivosModel).with_entities(
                 DispositivosModel.id,
@@ -214,7 +225,7 @@ class DispositivosModel(db.Model):
                 DispositivosModel.modelo,
                 DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
                                                         DispositivosModel.producto.ilike(f'%{value}%'),
-                                                        DispositivosModel.modelo.ilike(f'%{value}%') )).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
 
         rows = result.total
         return result,rows
@@ -292,6 +303,7 @@ class DispositivosSchema(Schema):
     fechaUltimaModificacion = fields.DateTime()
     serie = fields.Str( validate=[validate.Length(max=100)])
     accesorios = fields.Str( validate=[validate.Length(max=100)])
+    
 
 class DispositivosSchemaSomeFields(Schema):
     """
@@ -322,6 +334,7 @@ class DispositivosSchemaSomeFields(Schema):
     accesorios = fields.Str( validate=[validate.Length(max=100)])
     lugar = fields.Str( validate=[validate.Length(max=100)])
     descripcion = fields.Str( validate=[validate.Length(max=100)])
+    
 
 class DispositivosSchemaUpdate(Schema):
     """
@@ -350,7 +363,7 @@ class DispositivosSchemaUpdate(Schema):
     fechaUltimaModificacion = fields.DateTime()
     serie = fields.Str( validate=[validate.Length(max=100)])
     accesorios = fields.Str( validate=[validate.Length(max=100)])
-
+    
 
 class DispositivosSchemaQuery(Schema):
     """
@@ -377,3 +390,4 @@ class DispositivosSchemaQuery(Schema):
     idMov = fields.Str(validate=[validate.Length(max=500)])
     serie = fields.Str( validate=[validate.Length(max=100)])
     accesorios = fields.Str( validate=[validate.Length(max=100)])
+    

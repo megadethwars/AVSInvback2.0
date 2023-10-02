@@ -40,7 +40,7 @@ class MovimientosModel(db.Model):
     foto2 = db.Column(db.Text)
     fechaAlta = db.Column(db.DateTime)
     fechaUltimaModificacion = db.Column(db.DateTime)
-
+    cantidad_Actual=db.Column(db.Integer,default=0)
     lugar=db.relationship(
          "LugaresModel",backref=db.backref("invLugares2",lazy=True)
     )
@@ -72,6 +72,7 @@ class MovimientosModel(db.Model):
         self.LugarId = data.get("LugarId")
         self.fechaAlta = datetime.datetime.utcnow()
         self.fechaUltimaModificacion = datetime.datetime.utcnow()
+        self.cantidad_Actual=data.get("cantidad_Actual")
 
     def save(self):
         db.session.add(self)
@@ -259,6 +260,8 @@ class MovimientosSchema(Schema):
     dispositivo=fields.Nested(DispositivosSchema)
     tipoMovimiento=fields.Nested(TipoMoveSchema)
     usuario = fields.Nested(UsuariosSchema)
+    cantidad_Actual = fields.Integer(required=False)
+    
 
 
 class MovimientosSchemaUpdate(Schema):
