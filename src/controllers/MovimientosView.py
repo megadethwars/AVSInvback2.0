@@ -124,7 +124,7 @@ def createMovements(data, listaObjetosCreados, listaErrores):
         error = returnCodes.partial_response("TPM-5","el tipo de movimiento no existe",data.get("tipoMovId"),data.get("id"))
         listaErrores.append(error)
         return returnCodes.custom_response(None, 409, "TPM-5", "", data.get("tipoMovId"),data.get("id"))
-    diference = 0
+    diference = 1
 
     if 'cantidad_Actual' in data:
 
@@ -138,6 +138,11 @@ def createMovements(data, listaObjetosCreados, listaErrores):
                 diference=device_in_db.cantidad - 1
             if tipo_in_db.id==2:
                 diference=device_in_db.cantidad + 1
+    else:
+        if tipo_in_db.id==1:
+            diference=device_in_db.cantidad - 1
+        if tipo_in_db.id==2:
+            diference=device_in_db.cantidad + 1
 
     if diference<0:
 
