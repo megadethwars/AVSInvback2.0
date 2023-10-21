@@ -22,6 +22,11 @@ parserMinDevices.add_argument('limit', type=int, location='args')
 parserMinDevices.add_argument('offset', type=int, location='args')
 parserMinDevices.add_argument('inStorage', type=int, location='args')
 parserMinDevices.add_argument('value', type=str, location='headers')
+parserSomeDevices = reqparse.RequestParser()
+parserSomeDevices.add_argument('limit', type=int, location='args')
+parserSomeDevices.add_argument('offset', type=int, location='args')
+parserSomeDevices.add_argument('value', type=str, location='headers')
+
 Device_api = Blueprint("devices_api", __name__)
 dispositivos_schema = DispositivosSchema()
 dispositivos_schema_update = DispositivosSchemaUpdate()
@@ -391,11 +396,11 @@ class DeviceFilterPost(Resource):
 
 ## filtro con pocos campos, usado tambien en inventario para busquedas
 @nsDevices.route("/filterdeviceFields")
-@nsDevices.expect(parser)
+@nsDevices.expect(parserSomeDevices)
 @nsDevices.response(404, "equipo no encontrado")
 class DeviceFilterPost(Resource):
     
-    @nsDevices.doc("obtener varios equipos, filtro con pocoas campos")
+    @nsDevices.doc("obtener varios equipos, filtro con pocos campos")
     @api.expect(DevicesQueryModelFilterOneField)
     def post(self):
       
@@ -490,7 +495,7 @@ class DeviceFilterMin(Resource):
         return returnCodes.custom_response(serialized_device, 200, "TPM-3","",[],True,rows)
 
 
-'''filtro con campos minimos, para entrada y salida de equipos'''
+'''filtro con campos minimos por codigo, para entrada y salida de equipos'''
 @nsDevices.route("/filterdeviceByCodigo")
 @nsDevices.expect(parserMinDevices)
 @nsDevices.response(404, "equipo no encontrado")
@@ -528,8 +533,8 @@ class DeviceFilterByCodigo(Resource):
 class DeviceAllPostSomeFields(Resource):
     
     @nsDevices.doc("obtener todos los equipos, con pocos campos")
+
     def get(self):
-      
         offset = 1
         limit = 100
 

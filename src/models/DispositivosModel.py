@@ -8,7 +8,7 @@ from sqlalchemy import desc
 import sqlalchemy
 from . import db
 from sqlalchemy import Date,cast
-from sqlalchemy import or_
+from sqlalchemy import or_,and_
 from sqlalchemy.sql.expression import func
 
 class DispositivosModel(db.Model):
@@ -136,7 +136,7 @@ class DispositivosModel(db.Model):
         result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         return result
     
-
+    #query all devices in main inventory
     @staticmethod
     def get_devices_by_like_someFields(value,offset=1,limit=100):
 
@@ -178,12 +178,56 @@ class DispositivosModel(db.Model):
         #                                                                                                                                                     *marca,
         #                                                                                                                                                     *modelo,
         #                                                                                                                                                     *serie,
-        #                                                                                                                                                     *accesorios)).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        #
+        if value.strip()=="" or len(value.strip().split())==1:
+            result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,
+                                                                       DispositivosModel.producto,
+                                                                       LugaresModel.lugar,
+                                                                       DispositivosModel.codigo,
+                                                                       DispositivosModel.marca,
+                                                                       DispositivosModel.modelo,
+                                                                       DispositivosModel.serie,
+                                                                       StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),
+                                                                                                                                                              DispositivosModel.codigo.ilike(f'%{value}%') ,
+                                                                                                                                                              DispositivosModel.producto.ilike(f'%{value}%') ,
+                                                                                                                                                              DispositivosModel.marca.ilike(f'%{value}%') ,
+                                                                                                                                                              DispositivosModel.modelo.ilike(f'%{value}%') ,
+                                                                                                                                                              DispositivosModel.serie.ilike(f'%{value}%') ,
+                                                                                                                                                              DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+            rows = result.total
+            return result,rows
 
-        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        palabras = value.strip().split()
+        condiciones = [or_(
+            DispositivosModel.producto.ilike(f'%{palabra}%'),
+            LugaresModel.lugar.ilike(f'%{palabra}%'),
+            DispositivosModel.codigo.ilike(f'%{palabra}%'),
+            DispositivosModel.marca.ilike(f'%{palabra}%'),
+            DispositivosModel.modelo.ilike(f'%{palabra}%'),
+            DispositivosModel.serie.ilike(f'%{palabra}%'),
+            DispositivosModel.accesorios.ilike(f'%{palabra}%')
+            ) for palabra in palabras]
+
+        condicion_final = and_(*condiciones)
+        # Calcular la puntuación de coincidencia sumando las coincidencias de palabras clave
+        puntuacion_coincidencia = func.sum(condicion_final.cast(db.Boolean)).label('relevance_score')
+        result = db.session.query(DispositivosModel).with_entities(
+            DispositivosModel.id,
+            DispositivosModel.producto,
+            LugaresModel.lugar,
+            DispositivosModel.codigo,
+            DispositivosModel.marca,
+            DispositivosModel.modelo,
+            DispositivosModel.serie,
+            StatusDevicesModel.descripcion
+        ).join(LugaresModel).join(StatusDevicesModel).filter(
+            condicion_final
+        ).order_by(DispositivosModel.fechaUltimaModificacion.desc()).paginate(page=offset, per_page=limit, error_out=False)
+
+        #result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         rows = result.total
         return result,rows
-    
+
     @staticmethod
     def get_devices_by_like_minimunFields(value,offset=1,limit=100,inStorage=0):
 
