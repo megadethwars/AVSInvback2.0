@@ -99,6 +99,8 @@ def createReports(req_data, listaObjetosCreados, listaErrores):
 
     try:
         report.save()
+        dataToUpdateDevice={"id":data["dispositivoId"],"descompostura":data["comentarios"]}
+        device_in_db.update(dataToUpdateDevice)
     except Exception as err:
         error = returnCodes.custom_response(None, 500, "TPM-7", str(err)).json
         error = returnCodes.partial_response("TPM-7",str(err))

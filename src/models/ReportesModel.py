@@ -71,6 +71,25 @@ class ReportesModel(db.Model):
     def get_all_reportes(offset=0,limit=10):
         return ReportesModel.query.order_by(ReportesModel.id).offset(offset).limit(limit).all()
 
+    @staticmethod
+    def saveAndUpdate(data):
+        try:
+            with db.session.begin() as session:  # Comienza una transacción
+                # Crear un nuevo registro en "invReportes"
+                report = ReportesModel(data)
+                session.add(report)
+
+                # Realiza la actualización en "invDispositivos" si se proporciona la información
+                if "dispositivoId" in data:
+                    dispositivo = session.query(DispositivosModel).filter_by(id=report["dispositivoId"]).first()
+                    if dispositivo:
+                        dispositivo.descompostura = data["dispositivoId"]
+
+                # La transacción se confirmará automáticamente si no hay errores
+        except Exception as err:
+            return False,{}
+
+        return True,report
 
     @staticmethod
     def get_one_report(id):
