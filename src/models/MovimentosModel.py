@@ -96,8 +96,53 @@ class MovimientosModel(db.Model):
 
     @staticmethod
     def get_all_movimientos(offset=1,limit=10):
-        return MovimientosModel.query.order_by(MovimientosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
+        return MovimientosModel.query.order_by(MovimientosModel.fechaAlta.desc()).paginate(page=offset,per_page=limit,error_out=False)
+    
+    @staticmethod
+    def get_all_movimientos_somefields(offset=1,limit=10):
+        result = db.session.query(MovimientosModel).select_from(MovimientosModel).with_entities(
+            MovimientosModel.id,
+            MovimientosModel.fechaAlta,
+            DispositivosModel.producto,
+            MovimientosModel.idMovimiento,
+            UsuariosModel.nombre,
+            LugaresModel.lugar,
+            TipoMoveModel.tipo
+        ).join(DispositivosModel).join(UsuariosModel).join(
+            LugaresModel,LugaresModel.id == MovimientosModel.LugarId
+        ).join(TipoMoveModel).order_by(MovimientosModel.fechaAlta.desc()).paginate(page=offset,per_page=limit,error_out=False)
 
+
+        return result,result.total
+
+    @staticmethod
+    def get_all_movimientos_by_like_new_query(value,offset=1,limit=30):
+
+
+        result = db.session.query(MovimientosModel).select_from(MovimientosModel).with_entities(
+            MovimientosModel.id,
+            MovimientosModel.fechaAlta,
+            DispositivosModel.producto,
+            MovimientosModel.idMovimiento,
+            UsuariosModel.nombre,
+            LugaresModel.lugar,
+            TipoMoveModel.tipo
+        ).join(DispositivosModel).join(UsuariosModel).join(
+            LugaresModel,LugaresModel.id == MovimientosModel.LugarId
+        ).join(TipoMoveModel).filter(
+                or_(DispositivosModel.codigo.ilike(f'%{value}%') ,
+                    DispositivosModel.producto.ilike(f'%{value}%') ,
+                    DispositivosModel.marca.ilike(f'%{value}%') ,
+                    DispositivosModel.modelo.ilike(f'%{value}%') ,
+                    DispositivosModel.serie.ilike(f'%{value}%') ,
+                    DispositivosModel.accesorios.ilike(f'%{value}%'),
+                    MovimientosModel.idMovimiento.ilike(f'%{value}%'),
+                    UsuariosModel.nombre.ilike(f'%{value}%'),
+                    TipoMoveModel.tipo.ilike(f'%{value}%'))).order_by(MovimientosModel.fechaAlta.desc()).paginate(page=offset,per_page=limit,error_out=False)
+
+
+        return result,result.total
+        
 
     @staticmethod
     def get_all_movimientos_by_like(value,offset=1,limit=10):
@@ -299,7 +344,7 @@ class MovimientosSchemaSomeFields(Schema):
     """
     Catalogo Schema
     """
-
+    id = fields.Int()
     codigo = fields.Str(required=True, validate=[validate.Length(max=100)])
     producto = fields.Str(required=True, validate=[validate.Length(max=100)])
 

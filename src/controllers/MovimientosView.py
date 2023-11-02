@@ -22,6 +22,10 @@ app = Flask(__name__)
 parser = reqparse.RequestParser()
 parser.add_argument('limit', type=int, location='args')
 parser.add_argument('offset', type=int, location='args')
+minFieldparser = reqparse.RequestParser()
+minFieldparser.add_argument('limit', type=int, location='args')
+minFieldparser.add_argument('offset', type=int, location='args')
+minFieldparser.add_argument('value', type=str, location='headers')
 movimientos_api = Blueprint("movimientos_api", __name__)
 movimientos_schema = MovimientosSchema()
 movimientos_schema_update = MovimientosSchemaUpdate()
@@ -189,10 +193,10 @@ class DevicesList(Resource):
 
         if "limit" in request.args:
             limit = request.args.get('limit',default = 10, type = int)
-        devices = MovimientosModel.get_all_movimientos(offset,limit)
+        devices,rows = MovimientosModel.get_all_movimientos_somefields(offset,limit)
         #return catalogos
-        serialized_movimientos = movimientos_schema.dump(devices.items, many=True)
-        return returnCodes.custom_response(serialized_movimientos, 200, "TPM-3")
+        serialized_movimientos = movimientosschemasomefields.dump(devices.items, many=True)
+        return returnCodes.custom_response(serialized_movimientos, 200, "TPM-3","",[],True,rows)
 
     @nsMovements.doc("Crear movimiento")
     @nsMovements.expect(MovementsModelListApi)
@@ -349,18 +353,20 @@ class DeviceQuery(Resource):
         return returnCodes.custom_response(serialized_device, 200, "TPM-3") 
 
 
-@nsMovements.route("/filter/<value>")
-@nsMovements.expect(parser)
+@nsMovements.route("/filter")
+@nsMovements.expect(minFieldparser)
 @nsMovements.response(404, "movimiento no encontrado")
 class MovementFilter(Resource):
     
     @nsMovements.doc("obtener varios movimientos")
-    def get(self,value):
+    def get(self):
       
         offset = 1
         limit = 100
 
-        
+        value=""
+        if "value" in request.headers:
+            value =request.headers['value']
 
         if "offset" in request.args:
             offset = request.args.get('offset',default = 1, type = int)
@@ -369,21 +375,22 @@ class MovementFilter(Resource):
             limit = request.args.get('limit',default = 100, type = int)
 
 
-        moves = MovimientosModel.get_all_movimientos_by_like(value,offset,limit)
+        moves,rows = MovimientosModel.get_all_movimientos_by_like_new_query(value,offset,limit)
         if not moves:
             return returnCodes.custom_response(None, 404, "TPM-4")
 
-        serialized_device = movimientos_schema.dump(moves.items,many=True)
-        return returnCodes.custom_response(serialized_device, 200, "TPM-3")
+        serialized_device = movimientosschemasomefields.dump(moves.items,many=True)
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3","",[],True,rows)
 
 
 @nsMovements.route("/filtermovementFields")
-@nsMovements.expect(parser)
+@nsMovements.expect(minFieldparser)
 @nsMovements.response(404, "movimiento no encontrado")
 class MovementFilterPost(Resource):
     
 
     @nsMovements.doc("obtener varios movimientos, filtro con pocos campos")
+    @nsMovements.header("value", "el texto de valor a buscar", required=True)  # Agrega los encabezados aquí
     def get(self):
       
         offset = 1

@@ -140,45 +140,7 @@ class DispositivosModel(db.Model):
     @staticmethod
     def get_devices_by_like_someFields(value,offset=1,limit=100):
 
-        ##inicio de segundo algoritmo
         
-        # if value == "":
-        #     return None,0
-        # terminos = value.split()
-
-        
-        # lugares=[LugaresModel.lugar.ilike(f'%{termino}%') for termino in terminos]
-        # codigo = [DispositivosModel.codigo.ilike(f'%{termino}%') for termino in terminos]
-        # producto = [DispositivosModel.producto.ilike(f'%{termino}%') for termino in terminos]
-        # marca = [DispositivosModel.marca.ilike(f'%{termino}%') for termino in terminos]
-        # modelo = [DispositivosModel.modelo.ilike(f'%{termino}%') for termino in terminos]
-        # serie = [DispositivosModel.serie.ilike(f'%{termino}%') for termino in terminos]
-        # accesorios =[DispositivosModel.accesorios.ilike(f'%{termino}%') for termino in terminos]
-
-        # if len(terminos)>1:
-        #     distancia_minima = func.levenshtein(func.array(*terminos), func.array(DispositivosModel.producto,
-        #                                                                       DispositivosModel.marca,
-        #                                                                       DispositivosModel.modelo,
-        #                                                                       DispositivosModel.serie,
-        #                                                                       DispositivosModel.codigo
-        #                                                                       ))
-            
-        #     print(distancia_minima)
-
-        # result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,
-        #                                                             DispositivosModel.producto,
-        #                                                             LugaresModel.lugar,
-        #                                                             DispositivosModel.codigo,
-        #                                                             DispositivosModel.marca,
-        #                                                             DispositivosModel.modelo,
-        #                                                             DispositivosModel.serie,
-        #                                                             StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(*lugares,
-        #                                                                                                                                                     *codigo,
-        #                                                                                                                                                     *producto,
-        #                                                                                                                                                     *marca,
-        #                                                                                                                                                     *modelo,
-        #                                                                                                                                                     *serie,
-        #
         if value.strip()=="" or len(value.strip().split())==1:
             result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,
                                                                        DispositivosModel.producto,
