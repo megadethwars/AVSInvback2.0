@@ -99,7 +99,7 @@ class DispositivosModel(db.Model):
 
     @staticmethod
     def get_all_devices(offset=1,limit=10):
-        return DispositivosModel.query.order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
+        return DispositivosModel.query.order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False) 
 
 
     @staticmethod
@@ -116,10 +116,10 @@ class DispositivosModel(db.Model):
     
     @staticmethod
     def get_device_by_codigo_like(value,offset,limit):
-        return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') ).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') ).order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False)
 
     def get_device_by_codigo_like_entity(value,offset,limit):
-        return DispositivosModel.query.with_entities(DispositivosModel.id).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%'),DispositivosModel.serie.ilike(f'%{value}%')) ).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        return DispositivosModel.query.with_entities(DispositivosModel.id).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%'),DispositivosModel.serie.ilike(f'%{value}%')) ).order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False)
 
     @staticmethod
     def get_devices_by_like(value,offset=1,limit=100):
@@ -155,7 +155,7 @@ class DispositivosModel(db.Model):
                                                                                                                                                               DispositivosModel.marca.ilike(f'%{value}%') ,
                                                                                                                                                               DispositivosModel.modelo.ilike(f'%{value}%') ,
                                                                                                                                                               DispositivosModel.serie.ilike(f'%{value}%') ,
-                                                                                                                                                              DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+                                                                                                                                                              DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False)
             rows = result.total
             return result,rows
 
@@ -184,7 +184,7 @@ class DispositivosModel(db.Model):
             StatusDevicesModel.descripcion
         ).join(LugaresModel).join(StatusDevicesModel).filter(
             condicion_final
-        ).order_by(DispositivosModel.fechaUltimaModificacion.desc()).paginate(page=offset, per_page=limit, error_out=False)
+        ).order_by(DispositivosModel.producto.asc()).paginate(page=offset, per_page=limit, error_out=False)
 
         #result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         rows = result.total
@@ -200,7 +200,7 @@ class DispositivosModel(db.Model):
                 DispositivosModel.modelo,
                 DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
                                                         DispositivosModel.producto.ilike(f'%{value}%'),
-                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
+                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).order_by(desc(DispositivosModel.producto.asc())).paginate(page=offset,per_page=limit,error_out=False)
 
         rows = result.total
         return result,rows
@@ -243,7 +243,7 @@ class DispositivosModel(db.Model):
 
         #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
         
-        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
+        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False)
         rows = result.total
         # lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
         
