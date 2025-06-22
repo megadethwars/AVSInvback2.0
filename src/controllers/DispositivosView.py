@@ -6,7 +6,7 @@ from marshmallow import ValidationError
 from sqlalchemy import true
 
 from ..models.StatusDevicesModel import StatusDevicesModel
-from ..models.DispositivosModel import DispositivosModel, DispositivosSchema,DispositivosSchemaUpdate,DispositivosSchemaQuery,DispositivosSchemaSomeFields
+from ..models.DispositivosModel import DispositivosModel, DispositivosSchema,DispositivosSchemaUpdate,DispositivosSchemaQuery,DispositivosSchemaSomeFields,DispositivosSchemaCantity
 from ..models.LugaresModel import LugaresModel
 from ..models import db
 from ..shared import returnCodes
@@ -32,6 +32,7 @@ dispositivos_schema = DispositivosSchema()
 dispositivos_schema_update = DispositivosSchemaUpdate()
 dispositivos_schema_query = DispositivosSchemaQuery()
 dispositivosSchemaSomeFields = DispositivosSchemaSomeFields()
+totalAmouht_schema = DispositivosSchemaCantity()
 api = Api(Device_api)
 
 nsDevices = api.namespace("devices", description="API operations for devices")
@@ -552,3 +553,23 @@ class DeviceAllPostSomeFields(Resource):
         serialized_device = dispositivosSchemaSomeFields.dump(devices.items,many=True)
         return returnCodes.custom_response(serialized_device, 200, "TPM-3",True,rows)
     
+
+
+@nsDevices.route("/getAmount")
+@nsDevices.expect(parser)
+@nsDevices.response(404, "equipo no encontrado")
+class DeviceGetCantity(Resource):
+    
+    @nsDevices.doc("obtener la cantidad total del precio de los productos")
+
+    def get(self):
+        
+
+
+        total = DispositivosModel.get_devices_total_price()
+        if not total:
+            return returnCodes.custom_response(None, 404, "TPM-4")
+
+
+        serialized_device = {"TotalAmount":total}
+        return returnCodes.custom_response(serialized_device, 200, "TPM-3",True)

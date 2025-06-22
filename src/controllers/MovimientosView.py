@@ -147,6 +147,7 @@ def createMovements(data, listaObjetosCreados, listaErrores):
             diference=device_in_db.cantidad - 1
         if tipo_in_db.id==2:
             diference=device_in_db.cantidad + 1
+        data['cantidad_Actual']=1
 
     if diference<0:
 

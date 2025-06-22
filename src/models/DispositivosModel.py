@@ -4,7 +4,7 @@ from marshmallow import fields, Schema, validate
 import datetime
 from .StatusDevicesModel import StatusDevicesModel, StatusDevicesSchema
 from .LugaresModel import LugaresSchema,LugaresModel
-from sqlalchemy import desc
+from sqlalchemy import desc,DECIMAL
 import sqlalchemy
 from . import db
 from sqlalchemy import Date,cast
@@ -279,6 +279,22 @@ class DispositivosModel(db.Model):
         else:
             return ComercioModel.query.filter_by(**jsonFiltros).paginate(page=offset,per_page=limit,error_out=False),rows
 
+    @staticmethod
+    def get_devices_total_price():
+        total_costo = (
+            db.session.query(
+                func.sum(cast(DispositivosModel.costo, DECIMAL(18, 2)))
+            )
+            .filter(
+                DispositivosModel.costo != '',
+                DispositivosModel.costo != None,
+                func.isnumeric(DispositivosModel.costo) == 1
+            )
+            .scalar()
+        )
+
+        return total_costo
+
     def __repr(self):
         return '<id {}>'.format(self.id)
 
@@ -396,4 +412,10 @@ class DispositivosSchemaQuery(Schema):
     idMov = fields.Str(validate=[validate.Length(max=500)])
     serie = fields.Str( validate=[validate.Length(max=100)])
     accesorios = fields.Str( validate=[validate.Length(max=100)])
-    
+
+
+class DispositivosSchemaCantity(Schema):
+    """
+    Catalogo Schema
+    """
+    total = fields.Int()
