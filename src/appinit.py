@@ -1,4 +1,4 @@
-import imp
+
 import random
 from flask import Flask, current_app, render_template
 from flask_cors import CORS
@@ -6,8 +6,7 @@ from .config import app_config
 from .models import db
 from flask_migrate import Migrate
 from .shared import returnCodes
-#from .views.LugaresView import lugares_api as lugares_blueprint
-#from views.LugaresView import nsLugares as nsLugares
+
 
 from .controllers.LugaresView import nsLugares
 from .controllers.RolesView import nsRoles
@@ -31,17 +30,13 @@ def create_app(env_name):
     # cors
     #cors = CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
 
-    #app.config.from_object(app_config[env_name])
+    app.config.from_object(app_config[env_name])
 
-
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pymssql://forrerunner97:Asterisco97@inventarioavs1.database.windows.net/avsInventory'
 
     db.init_app(app)
 
     migrate = Migrate(app, db)
 
-    #app.register_blueprint(roles_blueprint, url_prefix="/api/v1/")
-    #app.register_blueprint(lugares_blueprint, url_prefix="/api/v1/")
     api = Api(app,title="Inventory API", version="1.1", description="A simple inventory API",)
 
 
@@ -63,20 +58,6 @@ def create_app(env_name):
     @app.errorhandler(400)
     def not_found(e):
         return returnCodes.custom_response(None, 400, 4001, "TPM-2")
-
-    #@api.route('/home')
-    #class HelloWorld(Resource):
-    #    def get(self):
-    #        return {'hello': 'world'}
-
-
-    #@app.route("/")
-    #def index():
-    #    """
-    #    root endpoint
-    #    """
-    #    return "GKE Config Tester Backend is running in version 1.0.1"
-
 
 
     return app
