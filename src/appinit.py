@@ -20,6 +20,7 @@ from .controllers.StatusDevicesView import nsStatusDevice
 
 from flask_restx import Api, fields, Resource
 from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
 
 def create_app(env_name):
     """
@@ -32,8 +33,11 @@ def create_app(env_name):
 
     app.config.from_object(app_config[env_name])
 
-
+    # Initialize extensions
     db.init_app(app)
+    
+    # Initialize JWT Manager
+    jwt = JWTManager(app)
 
     migrate = Migrate(app, db)
 

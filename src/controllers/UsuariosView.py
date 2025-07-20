@@ -9,6 +9,7 @@ from ..models import db
 from ..shared import returnCodes
 from flask_restx import Api,fields,Resource
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import create_access_token
 
 app = Flask(__name__)
 Usuario_api = Blueprint("users_api", __name__)
@@ -172,16 +173,21 @@ class UsersLogin(Resource):
 
         user = UsuariosModel.get_users_by_username(data.get("username"))
         if not user:
-            
             return returnCodes.custom_response(None, 404, "TPM-4","Usuario no encontrado")
 
-        if user.statusId==3:
+        if user.statusId == 3:
             return returnCodes.custom_response(None, 409, "TPM-19","Usuario dado de baja")
 
-
-        if check_password_hash(user.password,data['password'])==False:
+        if not check_password_hash(user.password, data['password']):
             return returnCodes.custom_response(None, 401, "TPM-10","acceso no autorizado, usuario y/o contraseña incorrecto")
+
         serialized_user = usuarios_schema.dump(user)
+        
+        # Generar JWT token
+        access_token = create_access_token(identity=user.id)
+        serialized_user['access_token'] = access_token
+        serialized_user['token_type'] = "Bearer"
+        serialized_user['expires_in'] = 3600  # Puedes ajustar el tiempo de expiración según tus necesidades
         return returnCodes.custom_response(serialized_user, 201, "TPM-18")
 
 
