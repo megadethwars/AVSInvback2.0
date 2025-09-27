@@ -187,7 +187,7 @@ class UsersLogin(Resource):
         access_token = create_access_token(identity=user.id)
         serialized_user['access_token'] = access_token
         serialized_user['token_type'] = "Bearer"
-        serialized_user['expires_in'] = 3600  # Puedes ajustar el tiempo de expiración según tus necesidades
+        serialized_user['expires_in'] = 7200  # Puedes ajustar el tiempo de expiración según tus necesidades
         return returnCodes.custom_response(serialized_user, 201, "TPM-18")
 
 
