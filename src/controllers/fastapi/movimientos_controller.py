@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -9,36 +8,9 @@ from ...database import get_db
 from ...models.DispositivosModel import DispositivosModel
 from ...models.LugaresModel import LugaresModel
 from ...schemas import MovimientosCreate
-from ...shared import returnCodes
+from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/movimientos", tags=["Movimientos"])
-
-
-def _legacy_response(res, status_code: int, app_code: str, message: str = "", item=None, is_query: bool = False, total: int = 0) -> JSONResponse:
-	message_list = []
-	if message == "":
-		message_list.append({"status": returnCodes.app_codes[app_code]})
-	else:
-		message_list.append({"status": str(message)})
-
-	if item is None:
-		item = []
-
-	if isinstance(item, list):
-		for x in item:
-			message_list.append(x)
-	elif item != "":
-		message_list.append({"object": item})
-
-	payload = {
-		"app_code": app_code,
-		"message": message_list,
-		"data": res,
-	}
-	if is_query:
-		payload["total_rows"] = total
-
-	return JSONResponse(status_code=status_code, content=payload)
 
 
 def _usuario_exists(db: Session, usuario_id: int) -> bool:
@@ -235,13 +207,13 @@ def _build_movimiento_response(db: Session, movimiento_id: int) -> dict | None:
 
 @router.get("", summary="Listar movimientos")
 async def movimientos_list() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "movimientos.list pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="movimientos.list pendiente de migracion")
 
 
 @router.post("", summary="Crear movimiento")
 async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 	if not payload:
-		return _legacy_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
 
 	try:
 		movimientos_raw = payload.get("movimientosList", payload)
@@ -251,7 +223,7 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
 			raise ValueError("movimientosList debe ser una lista")
 		movimientos = [MovimientosCreate.model_validate(item).model_dump(exclude_none=True) for item in movimientos_raw]
 	except Exception as err:
-		return _legacy_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", str(err))
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message=str(err))
 
 	lista_objetos_creados = []
 	lista_errores = []
@@ -259,20 +231,20 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
 	for item in movimientos:
 		dispositivo = DispositivosModel.get_one_device(db, item.get("dispositivoId"))
 		if not dispositivo:
-			lista_errores.append(returnCodes.partial_response("TPM-5", "el dispositivo no existe", item.get("dispositivoId"), item.get("id", 0)))
+			lista_errores.append(partial_response("TPM-5", "el dispositivo no existe", item.get("dispositivoId"), item.get("id", 0)))
 			continue
 
 		lugar = LugaresModel.get_one_lugar(db, item.get("LugarId"))
 		if not lugar:
-			lista_errores.append(returnCodes.partial_response("TPM-4", "el lugar no existe", item.get("LugarId"), item.get("id", 0)))
+			lista_errores.append(partial_response("TPM-4", "el lugar no existe", item.get("LugarId"), item.get("id", 0)))
 			continue
 
 		if not _usuario_exists(db, int(item.get("usuarioId"))):
-			lista_errores.append(returnCodes.partial_response("TPM-5", "el usuario no existe", item.get("usuarioId"), item.get("id", 0)))
+			lista_errores.append(partial_response("TPM-5", "el usuario no existe", item.get("usuarioId"), item.get("id", 0)))
 			continue
 
 		if not _tipo_mov_exists(db, int(item.get("tipoMovId"))):
-			lista_errores.append(returnCodes.partial_response("TPM-5", "el tipo de movimiento no existe", item.get("tipoMovId"), item.get("id", 0)))
+			lista_errores.append(partial_response("TPM-5", "el tipo de movimiento no existe", item.get("tipoMovId"), item.get("id", 0)))
 			continue
 
 		cantidad_actual = int(item.get("cantidad_Actual") or 1)
@@ -286,7 +258,7 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
 			diferencia = (dispositivo.cantidad or 0) + cantidad_actual
 
 		if diferencia < 0:
-			lista_errores.append(returnCodes.partial_response("TPM-17", "", item.get("dispositivoId"), item.get("id", 0)))
+			lista_errores.append(partial_response("TPM-17", "", item.get("dispositivoId"), item.get("id", 0)))
 			continue
 
 		now = datetime.utcnow()
@@ -334,50 +306,48 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
 				)
 		except Exception as err:
 			db.rollback()
-			lista_errores.append(returnCodes.partial_response("TPM-7", "", str(err), item.get("id", 0)))
-
-	if len(lista_objetos_creados) > 0:
+		lista_errores.append(partial_response("TPM-7", "", str(err), item.get("id", 0)))
 		if len(lista_errores) == 0:
-			return _legacy_response(lista_objetos_creados, status.HTTP_201_CREATED, "TPM-8")
-		return _legacy_response(lista_objetos_creados, status.HTTP_201_CREATED, "TPM-16", item=lista_errores)
+			return fastapi_response(lista_objetos_creados, status.HTTP_201_CREATED, "TPM-8")
+		return fastapi_response(lista_objetos_creados, status.HTTP_201_CREATED, "TPM-16", items=lista_errores)
 
-	return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-16", item=lista_errores)
+	return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-16", items=lista_errores)
 
 
 @router.put("", summary="Actualizar movimiento")
 async def movimientos_update(payload: dict, db: Session = Depends(get_db)) -> dict:
 	if not payload:
-		return _legacy_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
 
 	try:
 		movimiento_id = payload.get("id")
 		existe_mov = db.execute(text("SELECT id FROM invMovimientos WHERE id = :id"), {"id": movimiento_id}).scalar_one_or_none()
 		if not existe_mov:
-			return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+			return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
 		dispositivo_id = payload.get("dispositivoId")
 		if dispositivo_id:
 			existe_dispositivo = db.execute(text("SELECT id FROM invDispositivos WHERE id = :id"), {"id": dispositivo_id}).scalar_one_or_none()
 			if not existe_dispositivo:
-				return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=dispositivo_id)
+				return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(dispositivo_id))])
 
 		lugar_id = payload.get("LugarId")
 		if lugar_id:
 			existe_lugar = db.execute(text("SELECT id FROM invLugares WHERE id = :id"), {"id": lugar_id}).scalar_one_or_none()
 			if not existe_lugar:
-				return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=lugar_id)
+				return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(lugar_id))])
 
 		tipo_mov_id = payload.get("tipoMovId")
 		if tipo_mov_id:
 			existe_tipo = db.execute(text("SELECT id FROM invTipoMoves WHERE id = :id"), {"id": tipo_mov_id}).scalar_one_or_none()
 			if not existe_tipo:
-				return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=tipo_mov_id)
+				return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(tipo_mov_id))])
 
 		usuario_id = payload.get("usuarioId")
 		if usuario_id:
 			existe_usuario = db.execute(text("SELECT id FROM invUsuarios WHERE id = :id"), {"id": usuario_id}).scalar_one_or_none()
 			if not existe_usuario:
-				return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=usuario_id)
+				return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(usuario_id))])
 
 		now = datetime.utcnow()
 		update_query = text(
@@ -406,18 +376,18 @@ async def movimientos_update(payload: dict, db: Session = Depends(get_db)) -> di
 		db.commit()
 
 		movimiento_completo = _build_movimiento_response(db, movimiento_id)
-		return _legacy_response(movimiento_completo, status.HTTP_200_OK, "TPM-6")
+		return fastapi_response(movimiento_completo, status.HTTP_200_OK, "TPM-6")
 	except Exception as err:
 		db.rollback()
-		return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
+		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
 
 @router.get("/{id}", summary="Obtener movimiento por ID")
 async def movimientos_get_one(id: int, db: Session = Depends(get_db)) -> dict:
 	movimiento = _build_movimiento_response(db, id)
 	if not movimiento:
-		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-	return _legacy_response(movimiento, status.HTTP_200_OK, "TPM-3")
+		return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+	return fastapi_response(movimiento, status.HTTP_200_OK, "TPM-3")
 
 
 @router.get("/LastOne/{id}", summary="Obtener ultimo movimiento por dispositivo")
@@ -431,12 +401,12 @@ async def movimientos_last_one(id: int, db: Session = Depends(get_db)) -> dict:
 	)
 	last_mov_id = db.execute(query, {"dispositivo_id": id}).scalar_one_or_none()
 	if not last_mov_id:
-		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+		return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
 	movimiento = _build_movimiento_response(db, last_mov_id)
 	if not movimiento:
-		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-	return _legacy_response(movimiento, status.HTTP_200_OK, "TPM-3")
+		return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+	return fastapi_response(movimiento, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("/query", summary="Consultar movimientos")
@@ -473,16 +443,16 @@ async def movimientos_query(payload: dict, db: Session = Depends(get_db)) -> dic
 			mov_dict["usuario"] = _get_usuario(db, mov_dict.get("usuarioId"))
 			movimientos.append(mov_dict)
 
-		return _legacy_response(movimientos, status.HTTP_200_OK, "TPM-3", is_query=True, total=len(movimientos))
+		return fastapi_response(movimientos, status.HTTP_200_OK, "TPM-3", isQuery=True, total=len(movimientos))
 	except Exception as err:
-		return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
+		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
 
 @router.get("/filter", summary="Filtrar movimientos")
 async def movimientos_filter() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "movimientos.filter pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="movimientos.filter pendiente de migracion")
 
 
 @router.get("/filtermovementFields", summary="Filtrar movimientos campos minimos")
 async def movimientos_filter_fields() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "movimientos.filtermovementFields pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="movimientos.filtermovementFields pendiente de migracion")

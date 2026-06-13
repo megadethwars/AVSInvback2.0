@@ -1,35 +1,14 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from werkzeug.security import generate_password_hash
 
 from ...database import get_db
-from ...shared import returnCodes
+from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/usuarios", tags=["Usuarios"])
-
-
-def _legacy_response(res, status_code: int, app_code: str, message: str = "", item=None) -> JSONResponse:
-	message_list = []
-	if message == "":
-		message_list.append({"status": returnCodes.app_codes[app_code]})
-	else:
-		message_list.append({"status": str(message)})
-
-	if item is None:
-		item = []
-	elif item != "" and not isinstance(item, list):
-		message_list.append({"object": item})
-
-	payload = {
-		"app_code": app_code,
-		"message": message_list,
-		"data": res,
-	}
-	return JSONResponse(status_code=status_code, content=payload)
 
 
 def _json_safe_dict(record: dict | None) -> dict | None:
@@ -80,12 +59,12 @@ def _get_usuario_full(db: Session, usuario_id: int) -> dict | None:
 
 @router.post("/login", summary="Login usuario")
 async def users_login() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "usuarios.login pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="usuarios.login pendiente de migracion")
 
 
 @router.put("/pass", summary="Cambiar password")
 async def users_update_password() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "usuarios.pass pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="usuarios.pass pendiente de migracion")
 
 
 @router.get("", summary="Listar usuarios")
@@ -98,13 +77,13 @@ async def users_list(db: Session = Depends(get_db)) -> dict:
 		usuario["rol"] = _get_rol(db, usuario.get("rolId"))
 		usuario["status"] = _get_status_usuario(db, usuario.get("statusId"))
 		usuarios.append(usuario)
-	return _legacy_response(usuarios, status.HTTP_200_OK, "TPM-3")
+	return fastapi_response(usuarios, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("", summary="Crear usuario")
 async def users_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 	if not payload:
-		return _legacy_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
 
 	try:
 		user_data = {
@@ -122,15 +101,15 @@ async def users_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 
 		existe_user = db.execute(text("SELECT id FROM invUsuarios WHERE username = :username"), {"username": user_data["username"]}).scalar_one_or_none()
 		if existe_user:
-			return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-5", item=user_data["username"])
+			return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-5", items=[partial_response("TPM-5", name=user_data["username"])])
 
 		existe_rol = db.execute(text("SELECT id FROM invRoles WHERE id = :id"), {"id": user_data["rolId"]}).scalar_one_or_none()
 		if not existe_rol:
-			return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=user_data["rolId"])
+			return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(user_data["rolId"]))])
 
 		existe_status = db.execute(text("SELECT id FROM invStatusUsuarios WHERE id = :id"), {"id": user_data["statusId"]}).scalar_one_or_none()
 		if not existe_status:
-			return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=user_data["statusId"])
+			return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(user_data["statusId"]))])
 
 		now = datetime.utcnow()
 		insert_query = text(
@@ -144,25 +123,25 @@ async def users_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 		db.commit()
 
 		usuario_completo = _get_usuario_full(db, usuario_id)
-		return _legacy_response(usuario_completo, status.HTTP_201_CREATED, "TPM-1")
+		return fastapi_response(usuario_completo, status.HTTP_201_CREATED, "TPM-1")
 	except Exception as err:
 		db.rollback()
-		return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
+		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
 
 @router.put("", summary="Actualizar usuario")
 async def users_update() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "usuarios.update pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="usuarios.update pendiente de migracion")
 
 
 @router.get("/{id}", summary="Obtener usuario por ID")
 async def users_get_one(id: int, db: Session = Depends(get_db)) -> dict:
 	usuario = _get_usuario_full(db, id)
 	if not usuario:
-		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-	return _legacy_response(usuario, status.HTTP_200_OK, "TPM-3")
+		return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+	return fastapi_response(usuario, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("/query", summary="Consultar usuarios")
 async def users_query() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "usuarios.query pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="usuarios.query pendiente de migracion")

@@ -1,4 +1,5 @@
 from flask import Response, json
+from fastapi.responses import JSONResponse
 
 # Diccionario de return codes
 app_codes = {
@@ -70,3 +71,46 @@ def custom_response(res, status_code, app_code, message="", item=[],isQuery=Fals
         response=json.dumps(response),
         status=status_code,
     )
+
+
+def fastapi_response(res, status_code, app_code, message="", items=[], isQuery=False, total=0):
+    """
+    FastAPI Custom Response Function (returns JSONResponse)
+    Compatible with legacy API contract
+    
+    Args:
+        res: Response data
+        status_code: HTTP status code
+        app_code: TPM code (e.g., "TPM-1", "TPM-5")
+        message: Custom message or empty for default
+        items: List of error/object dicts from partial_response() or additional data
+        isQuery: Include total_rows in response
+        total: Total rows for query responses
+    """
+    messageSent = list()
+    if message == "":
+        messageSent.append({"status": app_codes[app_code]})
+    else:
+        messageSent.append({"status": str(message)})
+    
+    if isinstance(items, list):
+        for x in items:
+            messageSent.append(x)
+    elif items != "":
+        messageSent.append({"object": items})
+
+    if isQuery:
+        response = {
+            "app_code": app_code,
+            "message": messageSent,
+            "data": res,
+            "total_rows": total
+        }
+    else:
+        response = {
+            "app_code": app_code,
+            "message": messageSent,
+            "data": res,
+        }
+    
+    return JSONResponse(status_code=status_code, content=response)

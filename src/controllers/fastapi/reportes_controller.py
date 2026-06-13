@@ -1,34 +1,13 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ...database import get_db
-from ...shared import returnCodes
+from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/reportes", tags=["Reportes"])
-
-
-def _legacy_response(res, status_code: int, app_code: str, message: str = "", item=None) -> JSONResponse:
-	message_list = []
-	if message == "":
-		message_list.append({"status": returnCodes.app_codes[app_code]})
-	else:
-		message_list.append({"status": str(message)})
-
-	if item is None:
-		item = []
-	elif item != "" and not isinstance(item, list):
-		message_list.append({"object": item})
-
-	payload = {
-		"app_code": app_code,
-		"message": message_list,
-		"data": res,
-	}
-	return JSONResponse(status_code=status_code, content=payload)
 
 
 def _json_safe_dict(record: dict | None) -> dict | None:
@@ -143,13 +122,13 @@ async def reportes_list(db: Session = Depends(get_db)) -> dict:
 		reporte["dispositivo"] = _get_dispositivo(db, reporte.get("dispositivoId"))
 		reporte["usuario"] = _get_usuario(db, reporte.get("usuarioId"))
 		reportes.append(reporte)
-	return _legacy_response(reportes, status.HTTP_200_OK, "TPM-3")
+	return fastapi_response(reportes, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("", summary="Crear reporte")
 async def reportes_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 	if not payload:
-		return _legacy_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
 
 	try:
 		dispositivo_id = payload.get("dispositivoId")
@@ -159,11 +138,11 @@ async def reportes_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 
 		existe_dispositivo = db.execute(text("SELECT id FROM invDispositivos WHERE id = :id"), {"id": dispositivo_id}).scalar_one_or_none()
 		if not existe_dispositivo:
-			return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=dispositivo_id)
+			return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(dispositivo_id))])
 
 		existe_usuario = db.execute(text("SELECT id FROM invUsuarios WHERE id = :id"), {"id": usuario_id}).scalar_one_or_none()
 		if not existe_usuario:
-			return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=usuario_id)
+			return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(usuario_id))])
 
 		now = datetime.utcnow()
 		insert_query = text(
@@ -186,30 +165,30 @@ async def reportes_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 		db.commit()
 
 		reporte_completo = _build_reporte_response(db, reporte_id)
-		return _legacy_response(reporte_completo, status.HTTP_201_CREATED, "TPM-1")
+		return fastapi_response(reporte_completo, status.HTTP_201_CREATED, "TPM-1")
 	except Exception as err:
 		db.rollback()
-		return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
+		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
 
 @router.put("", summary="Actualizar reporte")
 async def reportes_update() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "reportes.update pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="reportes.update pendiente de migracion")
 
 
 @router.get("/{id}", summary="Obtener reporte por ID")
 async def reportes_get_one(id: int, db: Session = Depends(get_db)) -> dict:
 	reporte = _build_reporte_response(db, id)
 	if not reporte:
-		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-	return _legacy_response(reporte, status.HTTP_200_OK, "TPM-3")
+		return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+	return fastapi_response(reporte, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("/query", summary="Consultar reportes")
 async def reportes_query() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "reportes.query pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="reportes.query pendiente de migracion")
 
 
 @router.get("/filter/{value}", summary="Filtrar reportes")
 async def reportes_filter(value: str) -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", f"reportes.filter({value}) pendiente de migracion")
+	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message=f"reportes.filter({value}) pendiente de migracion")
