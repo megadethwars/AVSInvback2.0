@@ -1,5 +1,3 @@
-import imp
-import random
 from flask import Flask, current_app, render_template
 from flask_cors import CORS
 from .config import app_config

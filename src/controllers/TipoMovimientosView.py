@@ -1,4 +1,3 @@
-from telnetlib import NAMS
 from flask import Flask, request, json, Response, Blueprint, g
 from marshmallow import ValidationError
 
