@@ -178,10 +178,6 @@ async def dispositivos_query(
         .offset(offset)
         .limit(limit)
     ).scalars().all()
-
-    if not rows:
-        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-
     serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
