@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Body, Depends, Header, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -6,7 +6,7 @@ from ...database import get_db
 from ...models.DispositivosModel import DispositivosModel
 from ...models.LugaresModel import LugaresModel
 from ...models.StatusDevicesModel import StatusDevicesModel
-from ...schemas import DispositivosBase, DispositivosCreate, DispositivosUpdate
+from ...schemas import DispositivosBase, DispositivosCreate, DispositivosQuery, DispositivosUpdate
 from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/dispositivos", tags=["Dispositivos"])
@@ -20,6 +20,20 @@ def _serialize_some_fields(device: DispositivosModel) -> dict:
         "marca": device.marca,
         "modelo": device.modelo,
         "serie": device.serie,
+        "lugar": device.lugar.lugar if device.lugar else None,
+        "descripcion": device.status.descripcion if device.status else None,
+    }
+
+
+def _serialize_min_fields(device: DispositivosModel) -> dict:
+    return {
+        "id": device.id,
+        "codigo": device.codigo,
+        "producto": device.producto,
+        "marca": device.marca,
+        "modelo": device.modelo,
+        "serie": device.serie,
+        "cantidad": device.cantidad,
         "lugar": device.lugar.lugar if device.lugar else None,
         "descripcion": device.status.descripcion if device.status else None,
     }
@@ -137,18 +151,75 @@ async def delete_dispositivo(dispositivo_id: int, db: Session = Depends(get_db))
 
 
 @router.post("/query", summary="Consultar dispositivos")
-async def dispositivos_query() -> dict:
-    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.query pendiente de migracion")
+async def dispositivos_query(
+    payload: DispositivosQuery,
+    offset: int = 0,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+) -> dict:
+    filters_payload = payload.model_dump(exclude_none=True)
+    if not filters_payload:
+        return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+
+    base_query = select(DispositivosModel)
+
+    for field_name, field_value in filters_payload.items():
+        if not hasattr(DispositivosModel, field_name):
+            continue
+        column = getattr(DispositivosModel, field_name)
+        if isinstance(field_value, str):
+            base_query = base_query.where(column.ilike(f"%{field_value}%"))
+        else:
+            base_query = base_query.where(column == field_value)
+
+    rows = db.execute(
+        base_query
+        .order_by(DispositivosModel.producto)
+        .offset(offset)
+        .limit(limit)
+    ).scalars().all()
+
+    if not rows:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+    serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.get("/filter/{value}", summary="Filtrar dispositivos por valor")
-async def dispositivos_filter_by_value(value: str) -> dict:
-    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message=f"dispositivos.filter({value}) pendiente de migracion")
+async def dispositivos_filter_by_value(
+    value: str,
+    offset: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+) -> dict:
+    rows = DispositivosModel.search_by_multiple_fields(db, value, offset, limit)
+    if not rows:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+    serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("/filterdevice", summary="Filtrar dispositivos")
-async def dispositivos_filterdevice() -> dict:
-    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdevice pendiente de migracion")
+async def dispositivos_filterdevice(
+    payload: dict = Body(...),
+    offset: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+) -> dict:
+    if not payload:
+        return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+    if "value" not in payload:
+        return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message="campo Value no encontrado")
+
+    value = str(payload.get("value") or "").strip()
+    rows = DispositivosModel.search_by_multiple_fields(db, value, offset, limit)
+    if not rows:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+    serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.get("/filterdeviceFields", summary="Filtrar dispositivos campos")
@@ -193,13 +264,60 @@ async def dispositivos_filterdevice_fields(
 
 
 @router.get("/filterdeviceminFields", summary="Filtrar dispositivos minimos")
-async def dispositivos_filterdevice_min_fields() -> dict:
-    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdeviceminFields pendiente de migracion")
+async def dispositivos_filterdevice_min_fields(
+    offset: int = 0,
+    limit: int = 100,
+    inStorage: int = 0,
+    value: str = "",
+    header_value: str | None = Header(default=None, alias="value"),
+    db: Session = Depends(get_db),
+) -> dict:
+    search_value = (header_value or value or "").strip()
+    base_query = select(DispositivosModel)
+    count_query = select(func.count()).select_from(DispositivosModel)
+
+    if search_value:
+        pattern = f"%{search_value}%"
+        filters = or_(
+            DispositivosModel.codigo.ilike(pattern),
+            DispositivosModel.producto.ilike(pattern),
+            DispositivosModel.marca.ilike(pattern),
+            DispositivosModel.modelo.ilike(pattern),
+            DispositivosModel.serie.ilike(pattern),
+        )
+        base_query = base_query.where(filters)
+        count_query = count_query.where(filters)
+
+    if int(inStorage) == 1:
+        base_query = base_query.where(DispositivosModel.cantidad > 0)
+        count_query = count_query.where(DispositivosModel.cantidad > 0)
+
+    total_rows = int(db.execute(count_query).scalar() or 0)
+    rows = db.execute(
+        base_query
+        .order_by(DispositivosModel.producto)
+        .offset(offset)
+        .limit(limit)
+    ).scalars().all()
+
+    if not rows:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+    serialized = [_serialize_min_fields(row) for row in rows]
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
 
 
 @router.get("/filterdeviceByCodigo", summary="Filtrar dispositivos por codigo")
-async def dispositivos_filter_by_codigo() -> dict:
-    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdeviceByCodigo pendiente de migracion")
+async def dispositivos_filter_by_codigo(
+    value: str = Header(default="", alias="value"),
+    db: Session = Depends(get_db),
+) -> dict:
+    row = DispositivosModel.get_devices_by_codigo(db, value)
+    if not row:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+    serialized = DispositivosBase.model_validate(row).model_dump(mode="json")
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.get("/alldeviceSomeFields", summary="Listar dispositivos campos seleccionados")
@@ -224,8 +342,17 @@ async def dispositivos_some_fields(
 
 
 @router.get("/getAmount", summary="Obtener monto total dispositivos")
-async def dispositivos_get_amount() -> dict:
-    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.getAmount pendiente de migracion")
+async def dispositivos_get_amount(db: Session = Depends(get_db)) -> dict:
+    rows_count = int(db.execute(select(func.count()).select_from(DispositivosModel)).scalar() or 0)
+    if rows_count == 0:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+    total_amount = db.execute(
+        select(func.coalesce(func.sum(func.coalesce(DispositivosModel.costo, 0) * func.coalesce(DispositivosModel.cantidad, 0)), 0))
+    ).scalar()
+
+    serialized = {"TotalAmount": float(total_amount or 0)}
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.get("/{dispositivo_id}", summary="Obtener dispositivo por ID")
