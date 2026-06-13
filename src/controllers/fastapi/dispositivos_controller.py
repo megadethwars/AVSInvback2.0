@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from ...database import get_db
@@ -7,36 +6,9 @@ from ...models.DispositivosModel import DispositivosModel
 from ...models.LugaresModel import LugaresModel
 from ...models.StatusDevicesModel import StatusDevicesModel
 from ...schemas import DispositivosBase, DispositivosCreate, DispositivosUpdate
-from ...shared import returnCodes
+from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/dispositivos", tags=["Dispositivos"])
-
-
-def _legacy_response(res, status_code: int, app_code: str, message: str = "", item=None, is_query: bool = False, total: int = 0) -> JSONResponse:
-    message_list = []
-    if message == "":
-        message_list.append({"status": returnCodes.app_codes[app_code]})
-    else:
-        message_list.append({"status": str(message)})
-
-    if item is None:
-        item = []
-
-    if isinstance(item, list):
-        for x in item:
-            message_list.append(x)
-    elif item != "":
-        message_list.append({"object": item})
-
-    payload = {
-        "app_code": app_code,
-        "message": message_list,
-        "data": res,
-    }
-    if is_query:
-        payload["total_rows"] = total
-
-    return JSONResponse(status_code=status_code, content=payload)
 
 
 @router.get("", summary="Listar dispositivos")
@@ -54,9 +26,9 @@ async def get_dispositivos(
 async def get_dispositivo(dispositivo_id: int, db: Session = Depends(get_db)) -> dict:
     row = DispositivosModel.get_one_device(db, dispositivo_id)
     if not row:
-        return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
     serialized = DispositivosBase.model_validate(row).model_dump(mode="json")
-    return _legacy_response(serialized, status.HTTP_200_OK, "TPM-3")
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.get("/search/{search_term}", summary="Buscar dispositivos")
@@ -68,9 +40,9 @@ async def search_dispositivos(
 ) -> dict:
     rows = DispositivosModel.search_by_multiple_fields(db, search_term, offset, limit)
     if not rows:
-        return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
     serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
-    return _legacy_response(serialized, status.HTTP_200_OK, "TPM-3")
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Crear dispositivo")
@@ -80,15 +52,15 @@ async def create_dispositivo(
 ) -> dict:
     existing_device = DispositivosModel.get_devices_by_codigo(db, dispositivo_data.codigo)
     if existing_device:
-        return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-5", item=dispositivo_data.codigo)
+        return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-5", items=[partial_response("TPM-5", name=dispositivo_data.codigo)])
 
     lugar = LugaresModel.get_one_lugar(db, dispositivo_data.lugarId)
     if not lugar:
-        return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=dispositivo_data.lugarId)
+        return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(dispositivo_data.lugarId))])
 
     status_device = StatusDevicesModel.get_one_status(db, dispositivo_data.statusId)
     if not status_device:
-        return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=dispositivo_data.statusId)
+        return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(dispositivo_data.statusId))])
 
     payload = dispositivo_data.model_dump(exclude_none=True)
     payload.pop("lugar", None)
@@ -100,10 +72,10 @@ async def create_dispositivo(
     try:
         row = DispositivosModel.create_device(db, **payload)
     except Exception as err:
-        return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
+        return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
     serialized_device = DispositivosBase.model_validate(row).model_dump(mode="json")
-    return _legacy_response([serialized_device], status.HTTP_201_CREATED, "TPM-8")
+    return fastapi_response([serialized_device], status.HTTP_201_CREATED, "TPM-8")
 
 
 @router.put("/{dispositivo_id}", summary="Actualizar dispositivo")
@@ -126,54 +98,54 @@ async def update_dispositivo(
     if "lugarId" in payload:
         lugar = LugaresModel.get_one_lugar(db, payload["lugarId"])
         if not lugar:
-            return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=payload["lugarId"])
+            return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(payload["lugarId"]))])
 
     if "statusId" in payload:
         status_device = StatusDevicesModel.get_one_status(db, payload["statusId"])
         if not status_device:
-            return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=payload["statusId"])
+            return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(payload["statusId"]))])
 
     try:
         updated = row.update(db, **payload)
     except Exception as err:
-        return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
+        return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
     serialized = DispositivosBase.model_validate(updated).model_dump(mode="json")
-    return _legacy_response(serialized, status.HTTP_200_OK, "TPM-6")
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-6")
 
 
 @router.delete("/{dispositivo_id}", summary="Eliminar dispositivo")
 async def delete_dispositivo(dispositivo_id: int, db: Session = Depends(get_db)) -> dict:
     row = DispositivosModel.get_one_device(db, dispositivo_id)
     if not row:
-        return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
     try:
         row.delete(db)
     except Exception as err:
-        return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
+        return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
-    return _legacy_response(None, status.HTTP_200_OK, "TPM-9")
+    return fastapi_response(None, status.HTTP_200_OK, "TPM-9")
 
 
 @router.post("/query", summary="Consultar dispositivos")
 async def dispositivos_query() -> dict:
-    return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.query pendiente de migracion")
+    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.query pendiente de migracion")
 
 
 @router.get("/filter/{value}", summary="Filtrar dispositivos por valor")
 async def dispositivos_filter_by_value(value: str) -> dict:
-    return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message=f"dispositivos.filter({value}) pendiente de migracion")
+    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message=f"dispositivos.filter({value}) pendiente de migracion")
 
 
 @router.post("/filterdevice", summary="Filtrar dispositivos")
 async def dispositivos_filterdevice() -> dict:
-    return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdevice pendiente de migracion")
+    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdevice pendiente de migracion")
 
 
 @router.post("/filterdeviceFields", summary="Filtrar dispositivos campos")
 async def dispositivos_filterdevice_fields() -> dict:
-    return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdeviceFields pendiente de migracion")
+    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdeviceFields pendiente de migracion")
 
 
 @router.get("/filterdeviceminFields", summary="Filtrar dispositivos minimos")
