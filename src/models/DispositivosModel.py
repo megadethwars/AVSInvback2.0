@@ -70,8 +70,8 @@ class DispositivosModel(Base):
     @staticmethod
     def get_devices_by_codigo(db: Session, value: str):
         """Get device by codigo"""
-        query = select(DispositivosModel).where(DispositivosModel.codigo == value)
-        return db.execute(query).scalar_one_or_none()
+        query = select(DispositivosModel).where(DispositivosModel.codigo == value).limit(1)
+        return db.execute(query).scalars().first()
 
     @staticmethod
     def get_devices_by_producto(db: Session, value: str):
