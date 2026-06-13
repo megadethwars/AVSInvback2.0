@@ -200,8 +200,24 @@ async def dispositivos_filter_by_codigo() -> dict:
 
 
 @router.get("/alldeviceSomeFields", summary="Listar dispositivos campos seleccionados")
-async def dispositivos_some_fields() -> dict:
-    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.alldeviceSomeFields pendiente de migracion")
+async def dispositivos_some_fields(
+    offset: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+) -> dict:
+    total_rows = int(db.execute(select(func.count()).select_from(DispositivosModel)).scalar() or 0)
+    rows = db.execute(
+        select(DispositivosModel)
+        .order_by(DispositivosModel.producto)
+        .offset(offset)
+        .limit(limit)
+    ).scalars().all()
+
+    if not rows:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+    serialized = [_serialize_some_fields(row) for row in rows]
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
 
 
 @router.get("/getAmount", summary="Obtener monto total dispositivos")
