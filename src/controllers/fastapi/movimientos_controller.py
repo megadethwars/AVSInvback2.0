@@ -320,6 +320,8 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
 async def movimientos_update(payload: dict, db: Session = Depends(get_db)) -> dict:
 	if not payload:
 		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+	if payload.get("id") is None:
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message="id es requerido")
 
 	try:
 		movimiento_id = payload.get("id")

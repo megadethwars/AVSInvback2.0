@@ -17,7 +17,9 @@ async def tipomovimientos_create() -> dict:
 
 
 @router.put("", summary="Actualizar tipo de movimiento")
-async def tipomovimientos_update() -> dict:
+async def tipomovimientos_update(payload: dict) -> dict:
+	if not payload or payload.get("id") is None:
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message="id es requerido")
 	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "tipomovimientos.update pendiente de migracion")
 
 

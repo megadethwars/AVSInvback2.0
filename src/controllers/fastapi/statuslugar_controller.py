@@ -17,7 +17,9 @@ async def statuslugar_create() -> dict:
 
 
 @router.put("", summary="Actualizar status de lugar")
-async def statuslugar_update() -> dict:
+async def statuslugar_update(payload: dict) -> dict:
+	if not payload or payload.get("id") is None:
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message="id es requerido")
 	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "statuslugar.update pendiente de migracion")
 
 

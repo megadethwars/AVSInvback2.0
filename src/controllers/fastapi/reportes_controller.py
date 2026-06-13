@@ -172,7 +172,9 @@ async def reportes_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 
 
 @router.put("", summary="Actualizar reporte")
-async def reportes_update() -> dict:
+async def reportes_update(payload: dict) -> dict:
+	if not payload or payload.get("id") is None:
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message="id es requerido")
 	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="reportes.update pendiente de migracion")
 
 

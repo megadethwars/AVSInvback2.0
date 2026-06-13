@@ -41,8 +41,12 @@ async def create_lugar(lugar_data: LugaresCreate, db: Session = Depends(get_db))
     return fastapi_response(serialized, status.HTTP_201_CREATED, "TPM-1")
 
 
-@router.put("/{item_id}", summary="Actualizar lugar")
-async def update_lugar(item_id: int, lugar_data: LugaresUpdate, db: Session = Depends(get_db)) -> dict:
+@router.put("", summary="Actualizar lugar")
+async def update_lugar(lugar_data: LugaresUpdate, db: Session = Depends(get_db)) -> dict:
+    if lugar_data.id is None:
+        return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", "id es requerido")
+
+    item_id = int(lugar_data.id)
     lugar = LugaresModel.get_one_lugar(db, item_id)
     if not lugar:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")

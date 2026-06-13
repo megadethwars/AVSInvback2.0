@@ -83,12 +83,15 @@ async def create_dispositivo(
     return fastapi_response([serialized_device], status.HTTP_201_CREATED, "TPM-8")
 
 
-@router.put("/{dispositivo_id}", summary="Actualizar dispositivo")
+@router.put("", summary="Actualizar dispositivo")
 async def update_dispositivo(
-    dispositivo_id: int,
     dispositivo_data: DispositivosUpdate,
     db: Session = Depends(get_db),
 ) -> dict:
+    if dispositivo_data.id is None:
+        return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message="id es requerido")
+
+    dispositivo_id = int(dispositivo_data.id)
     row = DispositivosModel.get_one_device(db, dispositivo_id)
     if not row:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")

@@ -92,7 +92,9 @@ async def users_login(payload: dict, db: Session = Depends(get_db)) -> dict:
 
 
 @router.put("/pass", summary="Cambiar password")
-async def users_update_password() -> dict:
+async def users_update_password(payload: dict) -> dict:
+	if not payload or payload.get("id") is None:
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message="id es requerido")
 	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="usuarios.pass pendiente de migracion")
 
 
@@ -159,7 +161,9 @@ async def users_create(payload: dict, db: Session = Depends(get_db)) -> dict:
 
 
 @router.put("", summary="Actualizar usuario")
-async def users_update() -> dict:
+async def users_update(payload: dict) -> dict:
+	if not payload or payload.get("id") is None:
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", message="id es requerido")
 	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="usuarios.update pendiente de migracion")
 
 
