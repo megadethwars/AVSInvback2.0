@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from ...database import get_db
 from ...shared.returnCodes import fastapi_response, partial_response
@@ -58,8 +58,37 @@ def _get_usuario_full(db: Session, usuario_id: int) -> dict | None:
 
 
 @router.post("/login", summary="Login usuario")
-async def users_login() -> dict:
-	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="usuarios.login pendiente de migracion")
+async def users_login(payload: dict, db: Session = Depends(get_db)) -> dict:
+	if not payload:
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+
+	try:
+		username = payload.get("username")
+		password = payload.get("password")
+		if not username or not password:
+			return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+
+		query = text(
+			"""
+			SELECT id, password, statusId
+			FROM invUsuarios
+			WHERE username = :username
+			"""
+		)
+		user = db.execute(query, {"username": username}).mappings().first()
+		if not user:
+			return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4", message="Usuario no encontrado")
+
+		if int(user.get("statusId") or 0) == 3:
+			return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-19", message="Usuario dado de baja")
+
+		if not check_password_hash(str(user.get("password") or ""), password):
+			return fastapi_response(None, status.HTTP_401_UNAUTHORIZED, "TPM-10", message="acceso no autorizado, usuario y/o contraseña incorrecto")
+
+		serialized_user = _get_usuario_full(db, int(user.get("id")))
+		return fastapi_response(serialized_user, status.HTTP_201_CREATED, "TPM-18")
+	except Exception as err:
+		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
 
 @router.put("/pass", summary="Cambiar password")
