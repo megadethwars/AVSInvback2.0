@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -205,9 +205,74 @@ def _build_movimiento_response(db: Session, movimiento_id: int) -> dict | None:
 	return movimiento
 
 
+def _fetch_movimientos_some_fields(
+	db: Session,
+	offset: int,
+	limit: int,
+	search_value: str | None = None,
+) -> tuple[list[dict], int]:
+	base_from = """
+		FROM invMovimientos m
+		LEFT JOIN invDispositivos d ON d.id = m.dispositivoId
+		LEFT JOIN invLugares l ON l.id = m.LugarId
+		LEFT JOIN invTipoMoves tm ON tm.id = m.tipoMovId
+		LEFT JOIN invUsuarios u ON u.id = m.usuarioId
+	"""
+
+	where_clause = ""
+	params: dict = {"offset": int(offset), "limit": int(limit)}
+
+	if search_value:
+		where_clause = """
+			WHERE
+				d.codigo LIKE :pattern OR
+				d.producto LIKE :pattern OR
+				m.idMovimiento LIKE :pattern OR
+				l.lugar LIKE :pattern OR
+				tm.tipo LIKE :pattern OR
+				u.nombre LIKE :pattern OR
+				u.username LIKE :pattern
+		"""
+		params["pattern"] = f"%{search_value}%"
+
+	count_query = text(f"SELECT COUNT(1) {base_from} {where_clause}")
+	total_rows = int(db.execute(count_query, params).scalar() or 0)
+
+	data_query = text(
+		f"""
+		SELECT
+			m.id,
+			d.codigo,
+			d.producto,
+			m.fechaAlta,
+			m.idMovimiento,
+			l.lugar,
+			tm.tipo,
+			u.nombre,
+			u.username
+		{base_from}
+		{where_clause}
+		ORDER BY m.fechaAlta DESC
+		OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+		"""
+	)
+
+	rows = db.execute(data_query, params).mappings().all()
+	serialized = [_json_safe_dict(dict(row)) for row in rows]
+	return serialized, total_rows
+
+
 @router.get("", summary="Listar movimientos")
-async def movimientos_list() -> dict:
-	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="movimientos.list pendiente de migracion")
+async def movimientos_list(
+	offset: int = 0,
+	limit: int = 10,
+	db: Session = Depends(get_db),
+) -> dict:
+	try:
+		movimientos, total_rows = _fetch_movimientos_some_fields(db, offset, limit)
+		return fastapi_response(movimientos, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
+	except Exception as err:
+		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
 
 @router.post("", summary="Crear movimiento")
@@ -360,9 +425,9 @@ async def movimientos_update(payload: dict, db: Session = Depends(get_db)) -> di
 			SET dispositivoId = COALESCE(:dispositivoId, dispositivoId),
 				LugarId = COALESCE(:LugarId, LugarId),
 				tipoMovId = COALESCE(:tipoMovId, tipoMovId),
-				cantidad = COALESCE(:cantidad, cantidad),
+				cantidad_Actual = COALESCE(:cantidad_Actual, cantidad_Actual),
 				usuarioId = COALESCE(:usuarioId, usuarioId),
-				observaciones = COALESCE(:observaciones, observaciones),
+				comentarios = COALESCE(:comentarios, comentarios),
 				fechaUltimaModificacion = :fechaUltimaModificacion
 			WHERE id = :id
 			"""
@@ -372,9 +437,9 @@ async def movimientos_update(payload: dict, db: Session = Depends(get_db)) -> di
 			"dispositivoId": dispositivo_id,
 			"LugarId": lugar_id,
 			"tipoMovId": tipo_mov_id,
-			"cantidad": payload.get("cantidad"),
+			"cantidad_Actual": payload.get("cantidad_Actual"),
 			"usuarioId": usuario_id,
-			"observaciones": payload.get("observaciones"),
+			"comentarios": payload.get("comentarios"),
 			"fechaUltimaModificacion": now
 		})
 		db.commit()
@@ -384,15 +449,6 @@ async def movimientos_update(payload: dict, db: Session = Depends(get_db)) -> di
 	except Exception as err:
 		db.rollback()
 		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
-
-
-@router.get("/{id}", summary="Obtener movimiento por ID")
-async def movimientos_get_one(id: int, db: Session = Depends(get_db)) -> dict:
-	movimiento = _build_movimiento_response(db, id)
-	if not movimiento:
-		return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-	return fastapi_response(movimiento, status.HTTP_200_OK, "TPM-3")
-
 
 @router.get("/LastOne/{id}", summary="Obtener ultimo movimiento por dispositivo")
 async def movimientos_last_one(id: int, db: Session = Depends(get_db)) -> dict:
@@ -415,7 +471,10 @@ async def movimientos_last_one(id: int, db: Session = Depends(get_db)) -> dict:
 
 @router.post("/query", summary="Consultar movimientos")
 async def movimientos_query(payload: dict, db: Session = Depends(get_db)) -> dict:
-	base_query = "SELECT id, dispositivoId, LugarId, tipoMovId, cantidad, usuarioId, observaciones, fechaAlta, fechaUltimaModificacion FROM invMovimientos WHERE 1=1"
+	if payload is None:
+		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+
+	base_query = "SELECT id, idMovimiento, dispositivoId, LugarId, tipoMovId, cantidad_Actual, usuarioId, comentarios, foto, foto2, fechaAlta, fechaUltimaModificacion FROM invMovimientos WHERE 1=1"
 	params = {}
 
 	if payload.get("dispositivoId"):
@@ -438,6 +497,9 @@ async def movimientos_query(payload: dict, db: Session = Depends(get_db)) -> dic
 
 	try:
 		rows = db.execute(text(base_query), params).mappings().fetchall()
+		if not rows:
+			return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
 		movimientos = []
 		for row in rows:
 			mov_dict = _json_safe_dict(dict(row))
@@ -453,10 +515,44 @@ async def movimientos_query(payload: dict, db: Session = Depends(get_db)) -> dic
 
 
 @router.get("/filter", summary="Filtrar movimientos")
-async def movimientos_filter() -> dict:
-	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="movimientos.filter pendiente de migracion")
+async def movimientos_filter(
+	offset: int = 0,
+	limit: int = 100,
+	value: str = "",
+	header_value: str | None = Header(default=None, alias="value"),
+	db: Session = Depends(get_db),
+) -> dict:
+	search_value = (header_value or value or "").strip()
+
+	try:
+		movimientos, total_rows = _fetch_movimientos_some_fields(db, offset, limit, search_value)
+		if not movimientos:
+			return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+		return fastapi_response(movimientos, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
+	except Exception as err:
+		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
 
 @router.get("/filtermovementFields", summary="Filtrar movimientos campos minimos")
-async def movimientos_filter_fields() -> dict:
-	return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="movimientos.filtermovementFields pendiente de migracion")
+async def movimientos_filter_fields(
+	offset: int = 0,
+	limit: int = 100,
+	value: str = "",
+	header_value: str | None = Header(default=None, alias="value"),
+	db: Session = Depends(get_db),
+) -> dict:
+	search_value = (header_value or value or "").strip()
+
+	try:
+		movimientos, _ = _fetch_movimientos_some_fields(db, offset, limit, search_value)
+		return fastapi_response(movimientos, status.HTTP_200_OK, "TPM-3")
+	except Exception as err:
+		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
+
+
+@router.get("/{id}", summary="Obtener movimiento por ID")
+async def movimientos_get_one(id: int, db: Session = Depends(get_db)) -> dict:
+	movimiento = _build_movimiento_response(db, id)
+	if not movimiento:
+		return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+	return fastapi_response(movimiento, status.HTTP_200_OK, "TPM-3")
