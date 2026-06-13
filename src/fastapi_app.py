@@ -1,9 +1,8 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
-from starlette.middleware.wsgi import WSGIMiddleware
+from sqlalchemy.orm import Session
 
-from .appinit import create_app as create_flask_app
+from .database import get_db, init_db
 from .models.LugaresModel import LugaresModel
 from .schemas import LugaresBase, LugaresCreate, LugaresUpdate
 
@@ -12,7 +11,7 @@ def create_app(env_name: str = "local") -> FastAPI:
     app = FastAPI(
         title="Inventory API",
         version="2.0.0",
-        description="API REST de gestión de inventario migrada de Flask a FastAPI con Pydantic",
+        description="API REST de gestión de inventario con FastAPI y SQLAlchemy",
         contact={
             "name": "Development Team",
             "email": "dev@example.com",
@@ -22,6 +21,7 @@ def create_app(env_name: str = "local") -> FastAPI:
         },
     )
 
+    # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -30,30 +30,22 @@ def create_app(env_name: str = "local") -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Initialize database on startup
+    @app.on_event("startup")
+    async def startup_event():
+        """Initialize database tables on startup"""
+        init_db()
+        print("✓ Database initialized")
+
     # ==================== HEALTH & SYSTEM ====================
     @app.get(
         "/health",
         tags=["System"],
         summary="Health Check",
         description="Verifica el estado de la API y su disponibilidad",
-        responses={
-            200: {
-                "description": "API está funcionando correctamente",
-                "content": {
-                    "application/json": {
-                        "example": {"status": "ok"}
-                    }
-                },
-            }
-        },
     )
     async def health() -> dict[str, str]:
-        """
-        Health check endpoint para monitoreo de disponibilidad.
-        
-        Retorna:
-        - status: "ok" si la API está disponible
-        """
+        """Health check endpoint para monitoreo de disponibilidad."""
         return {"status": "ok"}
 
     # ==================== LUGARES (UBICACIONES) ====================
@@ -62,46 +54,11 @@ def create_app(env_name: str = "local") -> FastAPI:
         response_model=list[LugaresBase],
         tags=["Lugares"],
         summary="Listar todos los lugares",
-        description="Obtiene la lista completa de ubicaciones/lugares registrados en el sistema",
-        responses={
-            200: {
-                "description": "Lista de lugares obtenida exitosamente",
-                "content": {
-                    "application/json": {
-                        "example": [
-                            {
-                                "id": 1,
-                                "lugar": "Almacén Principal",
-                                "fechaAlta": "2024-01-15T10:30:00",
-                                "fechaUltimaModificacion": "2024-06-10T14:20:00",
-                                "activo": True,
-                            },
-                            {
-                                "id": 2,
-                                "lugar": "Oficina Central",
-                                "fechaAlta": "2024-02-20T09:15:00",
-                                "fechaUltimaModificacion": "2024-06-12T11:45:00",
-                                "activo": True,
-                            },
-                        ]
-                    }
-                },
-            },
-            500: {"description": "Error interno del servidor"},
-        },
+        description="Obtiene la lista completa de ubicaciones/lugares registrados",
     )
-    async def get_lugares() -> list[LugaresBase]:
-        """
-        Retorna una lista de todos los lugares registrados.
-        
-        Cada lugar incluye:
-        - id: Identificador único
-        - lugar: Nombre/descripción del lugar
-        - fechaAlta: Fecha de creación
-        - fechaUltimaModificacion: Última actualización
-        - activo: Estado del registro
-        """
-        lugares = LugaresModel.get_all_lugares()
+    async def get_lugares(db: Session = Depends(get_db)) -> list[LugaresBase]:
+        """Retorna una lista de todos los lugares registrados."""
+        lugares = LugaresModel.get_all_lugares(db)
         return [LugaresBase.model_validate(item) for item in lugares]
 
     @app.get(
@@ -110,46 +67,12 @@ def create_app(env_name: str = "local") -> FastAPI:
         tags=["Lugares"],
         summary="Obtener lugar por ID",
         description="Obtiene los detalles de un lugar específico por su identificador",
-        responses={
-            200: {
-                "description": "Lugar encontrado exitosamente",
-                "content": {
-                    "application/json": {
-                        "example": {
-                            "id": 1,
-                            "lugar": "Almacén Principal",
-                            "fechaAlta": "2024-01-15T10:30:00",
-                            "fechaUltimaModificacion": "2024-06-10T14:20:00",
-                            "activo": True,
-                        }
-                    }
-                },
-            },
-            404: {
-                "description": "Lugar no encontrado (Código: TPM-4)",
-                "content": {
-                    "application/json": {
-                        "example": {"detail": "TPM-4"}
-                    }
-                },
-            },
-            500: {"description": "Error interno del servidor"},
-        },
     )
-    async def get_lugar(item_id: int) -> LugaresBase:
-        """
-        Retorna los detalles de un lugar específico.
-        
-        Parámetros:
-        - item_id: ID del lugar a consultar
-        
-        Raises:
-        - HTTPException 404: Si el lugar no existe (TPM-4)
-        """
-        lugar = LugaresModel.get_one_lugar(item_id)
+    async def get_lugar(item_id: int, db: Session = Depends(get_db)) -> LugaresBase:
+        """Retorna los detalles de un lugar específico."""
+        lugar = LugaresModel.get_one_lugar(db, item_id)
         if not lugar:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="TPM-4")
-
         return LugaresBase.model_validate(lugar)
 
     @app.post(
@@ -159,40 +82,15 @@ def create_app(env_name: str = "local") -> FastAPI:
         summary="Crear nuevo lugar",
         description="Crea una nueva ubicación/lugar en el sistema",
         status_code=status.HTTP_201_CREATED,
-        responses={
-            201: {
-                "description": "Lugar creado exitosamente",
-                "content": {
-                    "application/json": {
-                        "example": {
-                            "id": 3,
-                            "lugar": "Nuevo Almacén",
-                            "fechaAlta": "2024-06-13T10:30:00",
-                            "fechaUltimaModificacion": "2024-06-13T10:30:00",
-                            "activo": True,
-                        }
-                    }
-                },
-            },
-            400: {"description": "Datos inválidos"},
-            500: {"description": "Error interno del servidor"},
-        },
     )
-    async def create_lugar(lugar_data: LugaresCreate) -> LugaresBase:
-        """
-        Crea un nuevo lugar en la base de datos.
-        
-        Parámetros:
-        - lugar: Nombre del lugar (requerido, máx 100 caracteres)
-        
-        Retorna:
-        - El lugar creado con ID asignado
-        """
-        # TODO: Implementar lógica de creación
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Endpoint en desarrollo",
+    async def create_lugar(
+        lugar_data: LugaresCreate, db: Session = Depends(get_db)
+    ) -> LugaresBase:
+        """Crea un nuevo lugar en la base de datos."""
+        new_lugar = LugaresModel.create_lugar(
+            db, lugar=lugar_data.lugar, activo=lugar_data.activo if lugar_data.activo is not None else True
         )
+        return LugaresBase.model_validate(new_lugar)
 
     @app.put(
         "/api/v1/lugares/{item_id}",
@@ -200,58 +98,37 @@ def create_app(env_name: str = "local") -> FastAPI:
         tags=["Lugares"],
         summary="Actualizar lugar",
         description="Actualiza los datos de un lugar existente",
-        responses={
-            200: {"description": "Lugar actualizado exitosamente"},
-            404: {"description": "Lugar no encontrado"},
-            400: {"description": "Datos inválidos"},
-            500: {"description": "Error interno del servidor"},
-        },
     )
-    async def update_lugar(item_id: int, lugar_data: LugaresUpdate) -> LugaresBase:
-        """
-        Actualiza los datos de un lugar existente.
+    async def update_lugar(
+        item_id: int, lugar_data: LugaresUpdate, db: Session = Depends(get_db)
+    ) -> LugaresBase:
+        """Actualiza los datos de un lugar existente."""
+        lugar = LugaresModel.get_one_lugar(db, item_id)
+        if not lugar:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="TPM-4")
         
-        Parámetros:
-        - item_id: ID del lugar a actualizar
-        - lugar_data: Datos a actualizar
-        
-        Retorna:
-        - El lugar actualizado
-        """
-        # TODO: Implementar lógica de actualización
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Endpoint en desarrollo",
-        )
+        # Update only provided fields
+        update_data = lugar_data.model_dump(exclude_unset=True)
+        updated_lugar = lugar.update(db, **update_data)
+        return LugaresBase.model_validate(updated_lugar)
 
     @app.delete(
         "/api/v1/lugares/{item_id}",
         tags=["Lugares"],
         summary="Eliminar lugar",
         description="Elimina un lugar del sistema",
-        responses={
-            204: {"description": "Lugar eliminado exitosamente"},
-            404: {"description": "Lugar no encontrado"},
-            500: {"description": "Error interno del servidor"},
-        },
+        status_code=status.HTTP_204_NO_CONTENT,
     )
-    async def delete_lugar(item_id: int) -> dict:
-        """
-        Elimina un lugar del sistema.
-        
-        Parámetros:
-        - item_id: ID del lugar a eliminar
-        """
-        # TODO: Implementar lógica de eliminación
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Endpoint en desarrollo",
-        )
-
-    flask_app = create_flask_app(env_name)
-    app.mount("/", WSGIMiddleware(flask_app))
+    async def delete_lugar(item_id: int, db: Session = Depends(get_db)) -> None:
+        """Elimina un lugar del sistema."""
+        lugar = LugaresModel.get_one_lugar(db, item_id)
+        if not lugar:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="TPM-4")
+        lugar.delete(db)
+        return None
 
     return app
 
 
+# Create app instance
 app = create_app("local")

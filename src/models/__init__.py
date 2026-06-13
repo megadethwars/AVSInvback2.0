@@ -1,7 +1,7 @@
 #src/models/__init__.py
-from flask_sqlalchemy import SQLAlchemy
-#from flask_bcrypt import Bcrypt
+"""Models package - uses native SQLAlchemy (no Flask dependency)"""
 
-# initialize our db
-db = SQLAlchemy()
-#bcrypt = Bcrypt()
+from ..database import Base, SessionLocal, engine
+
+# Re-export for backwards compatibility with old imports
+__all__ = ["Base", "SessionLocal", "engine"]
