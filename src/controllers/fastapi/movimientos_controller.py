@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy import text
@@ -69,6 +69,16 @@ def _json_safe_dict(record: dict | None) -> dict | None:
 		else:
 			output[key] = value
 	return output
+
+
+def _json_safe_value(value):
+	if isinstance(value, (datetime, date)):
+		return value.isoformat()
+	if isinstance(value, dict):
+		return {key: _json_safe_value(item) for key, item in value.items()}
+	if isinstance(value, list):
+		return [_json_safe_value(item) for item in value]
+	return value
 
 
 def _get_lugar(db: Session, lugar_id: int | None) -> dict | None:
@@ -203,6 +213,97 @@ def _build_movimiento_response(db: Session, movimiento_id: int) -> dict | None:
 	movimiento["tipoMovimiento"] = _get_tipo_movimiento(db, movimiento.get("tipoMovId"))
 	movimiento["usuario"] = _get_usuario(db, movimiento.get("usuarioId"))
 	return movimiento
+
+
+def _build_movimiento_from_joined_row(row: dict) -> dict:
+	movimiento = {
+		"id": row.get("movimiento_id"),
+		"idMovimiento": row.get("movimiento_idMovimiento"),
+		"dispositivoId": row.get("movimiento_dispositivoId"),
+		"usuarioId": row.get("movimiento_usuarioId"),
+		"tipoMovId": row.get("movimiento_tipoMovId"),
+		"LugarId": row.get("movimiento_LugarId"),
+		"comentarios": row.get("movimiento_comentarios"),
+		"foto": row.get("movimiento_foto"),
+		"foto2": row.get("movimiento_foto2"),
+		"fechaAlta": row.get("movimiento_fechaAlta"),
+		"fechaUltimaModificacion": row.get("movimiento_fechaUltimaModificacion"),
+		"cantidad_Actual": row.get("movimiento_cantidad_Actual"),
+	}
+
+	dispositivo = {
+		"id": row.get("dispositivo_id"),
+		"codigo": row.get("dispositivo_codigo"),
+		"producto": row.get("dispositivo_producto"),
+		"marca": row.get("dispositivo_marca"),
+		"modelo": row.get("dispositivo_modelo"),
+		"origen": row.get("dispositivo_origen"),
+		"foto": row.get("dispositivo_foto"),
+		"cantidad": row.get("dispositivo_cantidad"),
+		"observaciones": row.get("dispositivo_observaciones"),
+		"lugarId": row.get("dispositivo_lugarId"),
+		"pertenece": row.get("dispositivo_pertenece"),
+		"descompostura": row.get("dispositivo_descompostura"),
+		"costo": row.get("dispositivo_costo"),
+		"compra": row.get("dispositivo_compra"),
+		"proveedor": row.get("dispositivo_proveedor"),
+		"idMov": row.get("dispositivo_idMov"),
+		"statusId": row.get("dispositivo_statusId"),
+		"serie": row.get("dispositivo_serie"),
+		"accesorios": row.get("dispositivo_accesorios"),
+	}
+	dispositivo_lugar = {
+		"id": row.get("dispositivo_lugar_id"),
+		"lugar": row.get("dispositivo_lugar_lugar"),
+		"activo": row.get("dispositivo_lugar_activo"),
+		"fechaAlta": row.get("dispositivo_lugar_fechaAlta"),
+		"fechaUltimaModificacion": row.get("dispositivo_lugar_fechaUltimaModificacion"),
+	}
+	dispositivo_status = {
+		"id": row.get("dispositivo_status_id"),
+		"descripcion": row.get("dispositivo_status_descripcion"),
+		"fechaAlta": row.get("dispositivo_status_fechaAlta"),
+		"fechaUltimaModificacion": row.get("dispositivo_status_fechaUltimaModificacion"),
+	}
+	dispositivo["lugar"] = dispositivo_lugar if any(v is not None for v in dispositivo_lugar.values()) else None
+	dispositivo["status"] = dispositivo_status if any(v is not None for v in dispositivo_status.values()) else None
+
+	lugar = {
+		"id": row.get("lugar_id"),
+		"lugar": row.get("lugar_lugar"),
+		"activo": row.get("lugar_activo"),
+		"fechaAlta": row.get("lugar_fechaAlta"),
+		"fechaUltimaModificacion": row.get("lugar_fechaUltimaModificacion"),
+	}
+
+	tipo_movimiento = {
+		"id": row.get("tipoMovimiento_id"),
+		"tipo": row.get("tipoMovimiento_tipo"),
+		"fechaAlta": row.get("tipoMovimiento_fechaAlta"),
+		"fechaUltimaModificacion": row.get("tipoMovimiento_fechaUltimaModificacion"),
+	}
+
+	usuario = {
+		"id": row.get("usuario_id"),
+		"nombre": row.get("usuario_nombre"),
+		"username": row.get("usuario_username"),
+		"apellidoPaterno": row.get("usuario_apellidoPaterno"),
+		"apellidoMaterno": row.get("usuario_apellidoMaterno"),
+		"password": row.get("usuario_password"),
+		"telefono": row.get("usuario_telefono"),
+		"correo": row.get("usuario_correo"),
+		"foto": row.get("usuario_foto"),
+		"rolId": row.get("usuario_rolId"),
+		"statusId": row.get("usuario_statusId"),
+		"fechaAlta": row.get("usuario_fechaAlta"),
+		"fechaUltimaModificacion": row.get("usuario_fechaUltimaModificacion"),
+	}
+
+	movimiento["lugar"] = lugar if any(v is not None for v in lugar.values()) else None
+	movimiento["dispositivo"] = dispositivo if any(v is not None for v in dispositivo.values()) else None
+	movimiento["tipoMovimiento"] = tipo_movimiento if any(v is not None for v in tipo_movimiento.values()) else None
+	movimiento["usuario"] = usuario if any(v is not None for v in usuario.values()) else None
+	return _json_safe_value(movimiento)
 
 
 def _fetch_movimientos_some_fields(
@@ -470,46 +571,162 @@ async def movimientos_last_one(id: int, db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/query", summary="Consultar movimientos")
-async def movimientos_query(payload: dict, db: Session = Depends(get_db)) -> dict:
+async def movimientos_query(
+	payload: dict,
+	offset: int = 0,
+	limit: int = 100,
+	db: Session = Depends(get_db),
+) -> dict:
 	if payload is None:
 		return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
 
-	base_query = "SELECT id, idMovimiento, dispositivoId, LugarId, tipoMovId, cantidad_Actual, usuarioId, comentarios, foto, foto2, fechaAlta, fechaUltimaModificacion FROM invMovimientos WHERE 1=1"
+	base_query = """
+		SELECT
+			m.id AS movimiento_id,
+			m.idMovimiento AS movimiento_idMovimiento,
+			m.dispositivoId AS movimiento_dispositivoId,
+			m.usuarioId AS movimiento_usuarioId,
+			m.tipoMovId AS movimiento_tipoMovId,
+			m.LugarId AS movimiento_LugarId,
+			m.comentarios AS movimiento_comentarios,
+			m.foto AS movimiento_foto,
+			m.foto2 AS movimiento_foto2,
+			m.fechaAlta AS movimiento_fechaAlta,
+			m.fechaUltimaModificacion AS movimiento_fechaUltimaModificacion,
+			m.cantidad_Actual AS movimiento_cantidad_Actual,
+			d.id AS dispositivo_id,
+			d.codigo AS dispositivo_codigo,
+			d.producto AS dispositivo_producto,
+			d.marca AS dispositivo_marca,
+			d.modelo AS dispositivo_modelo,
+			d.origen AS dispositivo_origen,
+			d.foto AS dispositivo_foto,
+			d.cantidad AS dispositivo_cantidad,
+			d.observaciones AS dispositivo_observaciones,
+			d.lugarId AS dispositivo_lugarId,
+			d.pertenece AS dispositivo_pertenece,
+			d.descompostura AS dispositivo_descompostura,
+			d.costo AS dispositivo_costo,
+			d.compra AS dispositivo_compra,
+			d.proveedor AS dispositivo_proveedor,
+			d.idMov AS dispositivo_idMov,
+			d.statusId AS dispositivo_statusId,
+			d.serie AS dispositivo_serie,
+			d.accesorios AS dispositivo_accesorios,
+			ld.id AS dispositivo_lugar_id,
+			ld.lugar AS dispositivo_lugar_lugar,
+			ld.activo AS dispositivo_lugar_activo,
+			ld.fechaAlta AS dispositivo_lugar_fechaAlta,
+			ld.fechaUltimaModificacion AS dispositivo_lugar_fechaUltimaModificacion,
+			sd.id AS dispositivo_status_id,
+			sd.descripcion AS dispositivo_status_descripcion,
+			sd.fechaAlta AS dispositivo_status_fechaAlta,
+			sd.fechaUltimaModificacion AS dispositivo_status_fechaUltimaModificacion,
+			l.id AS lugar_id,
+			l.lugar AS lugar_lugar,
+			l.activo AS lugar_activo,
+			l.fechaAlta AS lugar_fechaAlta,
+			l.fechaUltimaModificacion AS lugar_fechaUltimaModificacion,
+			tm.id AS tipoMovimiento_id,
+			tm.tipo AS tipoMovimiento_tipo,
+			tm.fechaAlta AS tipoMovimiento_fechaAlta,
+			tm.fechaUltimaModificacion AS tipoMovimiento_fechaUltimaModificacion,
+			u.id AS usuario_id,
+			u.nombre AS usuario_nombre,
+			u.username AS usuario_username,
+			u.apellidoPaterno AS usuario_apellidoPaterno,
+			u.apellidoMaterno AS usuario_apellidoMaterno,
+			u.password AS usuario_password,
+			u.telefono AS usuario_telefono,
+			u.correo AS usuario_correo,
+			u.foto AS usuario_foto,
+			u.rolId AS usuario_rolId,
+			u.statusId AS usuario_statusId,
+			u.fechaAlta AS usuario_fechaAlta,
+			u.fechaUltimaModificacion AS usuario_fechaUltimaModificacion
+		FROM invMovimientos m
+		INNER JOIN invDispositivos d ON d.id = m.dispositivoId
+		LEFT JOIN invLugares ld ON ld.id = d.lugarId
+		LEFT JOIN invStatusDevices sd ON sd.id = d.statusId
+		LEFT JOIN invLugares l ON l.id = m.LugarId
+		LEFT JOIN invTipoMoves tm ON tm.id = m.tipoMovId
+		LEFT JOIN invUsuarios u ON u.id = m.usuarioId
+		WHERE 1=1
+	"""
+	count_query = """
+		SELECT COUNT(1) AS total_rows
+		FROM invMovimientos m
+		INNER JOIN invDispositivos d ON d.id = m.dispositivoId
+		LEFT JOIN invLugares ld ON ld.id = d.lugarId
+		LEFT JOIN invStatusDevices sd ON sd.id = d.statusId
+		LEFT JOIN invLugares l ON l.id = m.LugarId
+		LEFT JOIN invTipoMoves tm ON tm.id = m.tipoMovId
+		LEFT JOIN invUsuarios u ON u.id = m.usuarioId
+		WHERE 1=1
+	"""
+	where_clause = ""
 	params = {}
+	filters_applied = 0
 
-	if payload.get("dispositivoId"):
-		base_query += " AND dispositivoId = :dispositivoId"
+	if "id" in payload and payload.get("id") is not None:
+		where_clause += " AND m.id = :id"
+		params["id"] = payload.get("id")
+		filters_applied += 1
+
+	if "dispositivoId" in payload and payload.get("dispositivoId") is not None:
+		where_clause += " AND m.dispositivoId = :dispositivoId"
 		params["dispositivoId"] = payload.get("dispositivoId")
+		filters_applied += 1
 
-	if payload.get("LugarId"):
-		base_query += " AND LugarId = :LugarId"
+	if "LugarId" in payload and payload.get("LugarId") is not None:
+		where_clause += " AND m.LugarId = :LugarId"
 		params["LugarId"] = payload.get("LugarId")
+		filters_applied += 1
 
-	if payload.get("tipoMovId"):
-		base_query += " AND tipoMovId = :tipoMovId"
+	if "tipoMovId" in payload and payload.get("tipoMovId") is not None:
+		where_clause += " AND m.tipoMovId = :tipoMovId"
 		params["tipoMovId"] = payload.get("tipoMovId")
+		filters_applied += 1
 
-	if payload.get("usuarioId"):
-		base_query += " AND usuarioId = :usuarioId"
+	if "usuarioId" in payload and payload.get("usuarioId") is not None:
+		where_clause += " AND m.usuarioId = :usuarioId"
 		params["usuarioId"] = payload.get("usuarioId")
+		filters_applied += 1
 
-	base_query += " ORDER BY fechaAlta DESC"
+	if "idMovimiento" in payload and payload.get("idMovimiento"):
+		where_clause += " AND m.idMovimiento LIKE :idMovimiento"
+		params["idMovimiento"] = f"%{str(payload.get('idMovimiento')).strip()}%"
+		filters_applied += 1
+
+	if "fechaAltaRangoInicio" in payload and payload.get("fechaAltaRangoInicio"):
+		where_clause += " AND CAST(m.fechaAlta AS DATE) >= :fechaAltaRangoInicio"
+		params["fechaAltaRangoInicio"] = payload.get("fechaAltaRangoInicio")
+		filters_applied += 1
+
+	if "fechaAltaRangoFin" in payload and payload.get("fechaAltaRangoFin"):
+		where_clause += " AND CAST(m.fechaAlta AS DATE) <= :fechaAltaRangoFin"
+		params["fechaAltaRangoFin"] = payload.get("fechaAltaRangoFin")
+		filters_applied += 1
+
+	# Keep query endpoint bounded: when no valid movement filters are provided,
+	# return an empty successful response instead of scanning all movements.
+	if filters_applied == 0:
+		return fastapi_response([], status.HTTP_200_OK, "TPM-3")
+
+	data_query = base_query + where_clause + " ORDER BY m.fechaAlta DESC OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY"
+	count_sql = count_query + where_clause
+	params["offset"] = int(offset)
+	params["limit"] = int(limit)
 
 	try:
-		rows = db.execute(text(base_query), params).mappings().fetchall()
+		total_rows = int(db.execute(text(count_sql), params).scalar() or 0)
+		rows = db.execute(text(data_query), params).mappings().all()
 		if not rows:
-			return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+			return fastapi_response([], status.HTTP_200_OK, "TPM-3")
 
-		movimientos = []
-		for row in rows:
-			mov_dict = _json_safe_dict(dict(row))
-			mov_dict["lugar"] = _get_lugar(db, mov_dict.get("LugarId"))
-			mov_dict["dispositivo"] = _get_dispositivo(db, mov_dict.get("dispositivoId"))
-			mov_dict["tipoMovimiento"] = _get_tipo_movimiento(db, mov_dict.get("tipoMovId"))
-			mov_dict["usuario"] = _get_usuario(db, mov_dict.get("usuarioId"))
-			movimientos.append(mov_dict)
+		movimientos = [_build_movimiento_from_joined_row(dict(row)) for row in rows]
 
-		return fastapi_response(movimientos, status.HTTP_200_OK, "TPM-3", isQuery=True, total=len(movimientos))
+		return fastapi_response(movimientos, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
 	except Exception as err:
 		return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
