@@ -1,421 +1,145 @@
-# app/src/models/CatalogoModel.py
-from pkgutil import ModuleInfo
-from marshmallow import fields, Schema, validate
-import datetime
-from .StatusDevicesModel import StatusDevicesModel, StatusDevicesSchema
-from .LugaresModel import LugaresSchema,LugaresModel
-from sqlalchemy import desc,DECIMAL
-import sqlalchemy
-from . import db
-from sqlalchemy import Date,cast
-from sqlalchemy import or_,and_
-from sqlalchemy.sql.expression import func
+"""Dispositivos Model using native SQLAlchemy 2.0"""
 
-class DispositivosModel(db.Model):
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, select, or_, and_
+from sqlalchemy.orm import Session, relationship
+
+from . import Base
+from .LugaresModel import LugaresModel
+from .StatusDevicesModel import StatusDevicesModel
+
+
+class DispositivosModel(Base):
     """
-    Catalogo Model
+    Dispositivos (Devices) Model
+    Table: invDispositivos
     """
     
     __tablename__ = 'invDispositivos'
 
-    id = db.Column(db.Integer, primary_key=True)
-    codigo = db.Column(db.String(100))
-    producto = db.Column(db.String(100))
-    marca = db.Column(db.String(100))
-    modelo = db.Column(db.String(100))
-    origen = db.Column(db.String(100))
-    foto = db.Column(db.Text)
-    cantidad =db.Column(db.Integer)
-    observaciones = db.Column(db.String(250))
-    lugarId = db.Column(
-        db.Integer,db.ForeignKey("invLugares.id"),nullable=False
-    )
-    statusId= db.Column(
-        db.Integer,db.ForeignKey("invStatusDevices.id"),nullable=False
-    )
-    pertenece = db.Column(db.String(100))
-    descompostura = db.Column(db.String(100))
-    costo = db.Column(db.Integer)
-    compra = db.Column(db.String(100))
-    proveedor = db.Column(db.String(100))
-    idMov = db.Column(db.Text)
-    fechaAlta = db.Column(db.DateTime)
-    fechaUltimaModificacion = db.Column(db.DateTime)
-    serie = db.Column(db.String(100))
-    accesorios = db.Column(db.String(100))
-    lugar=db.relationship(
-        "LugaresModel",backref=db.backref("invLugares",lazy=True)
-    )
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(100), nullable=False)
+    producto = Column(String(100), nullable=False)
+    marca = Column(String(100))
+    modelo = Column(String(100))
+    origen = Column(String(100))
+    foto = Column(Text)
+    cantidad = Column(Integer, default=1)
+    observaciones = Column(String(250))
+    lugarId = Column(Integer, ForeignKey("invLugares.id"), nullable=False)
+    statusId = Column(Integer, ForeignKey("invStatusDevices.id"), nullable=False)
+    pertenece = Column(String(100))
+    descompostura = Column(String(100))
+    costo = Column(Integer)
+    compra = Column(String(100))
+    proveedor = Column(String(100))
+    idMov = Column(Text)
+    fechaAlta = Column(DateTime, default=datetime.utcnow)
+    fechaUltimaModificacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    serie = Column(String(100))
+    accesorios = Column(String(100))
 
-  
-    status=db.relationship(
-        "StatusDevicesModel",backref=db.backref("invStatusDevices",lazy=True)
-    )
+    # Relationships
+    lugar = relationship("LugaresModel", backref="dispositivos")
+    status = relationship("StatusDevicesModel", backref="dispositivos")
 
-  
-
-    def __init__(self, data):
-        """
-        Class constructor
-        """
-      
-
-        self.codigo = data.get("codigo")
-        self.producto = data.get("producto")
-        self.marca = data.get("marca")
-        self.modelo = data.get("modelo")
-        self.origen = data.get("origen")
-        self.foto = data.get("foto")
-        self.cantidad = data.get("cantidad")
-        self.observaciones = data.get("observaciones")
-        self.lugarId = data.get("lugarId")
-        self.pertenece = data.get("pertenece")
-        self.descompostura = data.get("descompostura")
-        self.costo = data.get("costo")
-        self.compra = data.get("compra")
-        self.proveedor = data.get("proveedor")
-        self.idMov = data.get("idMov")
-        self.statusId= data.get("statusId")
-        self.serie = data.get("serie")
-        self.accesorios = data.get("accesorios")
-        
-
-        self.fechaAlta = datetime.datetime.utcnow()
-        self.fechaUltimaModificacion = datetime.datetime.utcnow()
-
-    def save(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self, data):
-        for key, item in data.items():
-            setattr(self, key, item)
-        self.fechaUltimaModificacion = datetime.datetime.utcnow()
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
+    def __init__(self, codigo: str, producto: str, lugarId: int, statusId: int, **kwargs):
+        """Initialize a new Dispositivo"""
+        self.codigo = codigo
+        self.producto = producto
+        self.lugarId = lugarId
+        self.statusId = statusId
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        self.fechaAlta = datetime.utcnow()
+        self.fechaUltimaModificacion = datetime.utcnow()
 
     @staticmethod
-    def get_all_devices(offset=1,limit=10):
-        return DispositivosModel.query.order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False) 
-
-
-    @staticmethod
-    def get_one_device(id):
-        return DispositivosModel.query.get(id)
+    def get_all_devices(db: Session, offset: int = 0, limit: int = 10):
+        """Get all devices with pagination"""
+        query = select(DispositivosModel).order_by(DispositivosModel.producto).offset(offset).limit(limit)
+        return db.execute(query).scalars().all()
 
     @staticmethod
-    def get_devices_by_codigo(value):
-        return DispositivosModel.query.filter_by(codigo=value).first()
+    def get_one_device(db: Session, id: int):
+        """Get a single device by ID"""
+        query = select(DispositivosModel).where(DispositivosModel.id == id)
+        return db.execute(query).scalar_one_or_none()
 
     @staticmethod
-    def get_devices_by_producto(value):
-        return DispositivosModel.query.filter_by(producto=value).first()
-    
-    @staticmethod
-    def get_device_by_codigo_like(value,offset,limit):
-        return DispositivosModel.query.filter(DispositivosModel.codigo.ilike(f'%{value}%') ).order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False)
-
-    def get_device_by_codigo_like_entity(value,offset,limit):
-        return DispositivosModel.query.with_entities(DispositivosModel.id).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%'),DispositivosModel.serie.ilike(f'%{value}%')) ).order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False)
+    def get_devices_by_codigo(db: Session, value: str):
+        """Get device by codigo"""
+        query = select(DispositivosModel).where(DispositivosModel.codigo == value)
+        return db.execute(query).scalar_one_or_none()
 
     @staticmethod
-    def get_devices_by_like(value,offset=1,limit=100):
-
-        lugares=[]
-      
-        lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
-        
-        if len(lugar.items)!=0:
-            for x in lugar.items:
-                lugares.append(x.id)
-        
-
-        result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
-        return result
-    
-    #query all devices in main inventory
-    @staticmethod
-    def get_devices_by_like_someFields(value,offset=1,limit=100):
-
-        
-        if value.strip()=="" or len(value.strip().split())==1:
-            result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,
-                                                                       DispositivosModel.producto,
-                                                                       LugaresModel.lugar,
-                                                                       DispositivosModel.codigo,
-                                                                       DispositivosModel.marca,
-                                                                       DispositivosModel.modelo,
-                                                                       DispositivosModel.serie,
-                                                                       StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),
-                                                                                                                                                              DispositivosModel.codigo.ilike(f'%{value}%') ,
-                                                                                                                                                              DispositivosModel.producto.ilike(f'%{value}%') ,
-                                                                                                                                                              DispositivosModel.marca.ilike(f'%{value}%') ,
-                                                                                                                                                              DispositivosModel.modelo.ilike(f'%{value}%') ,
-                                                                                                                                                              DispositivosModel.serie.ilike(f'%{value}%') ,
-                                                                                                                                                              DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False)
-            rows = result.total
-            return result,rows
-
-        palabras = value.strip().split()
-        condiciones = [or_(
-            DispositivosModel.producto.ilike(f'%{palabra}%'),
-            LugaresModel.lugar.ilike(f'%{palabra}%'),
-            DispositivosModel.codigo.ilike(f'%{palabra}%'),
-            DispositivosModel.marca.ilike(f'%{palabra}%'),
-            DispositivosModel.modelo.ilike(f'%{palabra}%'),
-            DispositivosModel.serie.ilike(f'%{palabra}%'),
-            DispositivosModel.accesorios.ilike(f'%{palabra}%')
-            ) for palabra in palabras]
-
-        condicion_final = and_(*condiciones)
-        # Calcular la puntuación de coincidencia sumando las coincidencias de palabras clave
-        puntuacion_coincidencia = func.sum(condicion_final.cast(db.Boolean)).label('relevance_score')
-        result = db.session.query(DispositivosModel).with_entities(
-            DispositivosModel.id,
-            DispositivosModel.producto,
-            LugaresModel.lugar,
-            DispositivosModel.codigo,
-            DispositivosModel.marca,
-            DispositivosModel.modelo,
-            DispositivosModel.serie,
-            StatusDevicesModel.descripcion
-        ).join(LugaresModel).join(StatusDevicesModel).filter(
-            condicion_final
-        ).order_by(DispositivosModel.producto.asc()).paginate(page=offset, per_page=limit, error_out=False)
-
-        #result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).filter(or_(LugaresModel.lugar.ilike(f'%{value}%'),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
-        rows = result.total
-        return result,rows
+    def get_devices_by_producto(db: Session, value: str):
+        """Get device by producto"""
+        query = select(DispositivosModel).where(DispositivosModel.producto == value)
+        return db.execute(query).scalar_one_or_none()
 
     @staticmethod
-    def get_devices_by_like_minimunFields(value,offset=1,limit=100,inStorage=0):
-
-        result = db.session.query(DispositivosModel).with_entities(
-                DispositivosModel.id,
-                DispositivosModel.producto,
-                DispositivosModel.codigo,
-                DispositivosModel.modelo,
-                DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
-                                                        DispositivosModel.producto.ilike(f'%{value}%'),
-                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).order_by(desc(DispositivosModel.producto.asc())).paginate(page=offset,per_page=limit,error_out=False)
-
-        rows = result.total
-        return result,rows
-
-        if inStorage==1:
-            result = db.session.query(DispositivosModel).with_entities(
-                DispositivosModel.id,
-                DispositivosModel.producto,
-                DispositivosModel.codigo,
-                DispositivosModel.modelo,
-                DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
-                                                        DispositivosModel.producto.ilike(f'%{value}%'),
-                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).filter(DispositivosModel.lugarId == 1).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
-        elif inStorage==2:
-            result = db.session.query(DispositivosModel).with_entities(
-                DispositivosModel.id,
-                DispositivosModel.producto,
-                DispositivosModel.codigo,
-                DispositivosModel.modelo,
-                DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
-                                                        DispositivosModel.producto.ilike(f'%{value}%'),
-                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).filter(DispositivosModel.lugarId != 1).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
-        else:
-            result = db.session.query(DispositivosModel).with_entities(
-                DispositivosModel.id,
-                DispositivosModel.producto,
-                DispositivosModel.codigo,
-                DispositivosModel.modelo,
-                DispositivosModel.cantidad).filter(or_(DispositivosModel.codigo.ilike(f'%{value}%'),
-                                                        DispositivosModel.producto.ilike(f'%{value}%'),
-                                                        DispositivosModel.modelo.ilike(f'%{value}%'))).order_by(desc(DispositivosModel.fechaUltimaModificacion)).paginate(page=offset,per_page=limit,error_out=False)
-
-        rows = result.total
-        return result,rows
-
-    @staticmethod
-    def get_devices_someFields(offset=1,limit=100):
-
-        lugares=[]
-
-        #result = DispositivosModel.query.join(LugaresModel).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
-        
-        result = db.session.query(DispositivosModel).with_entities(DispositivosModel.id,DispositivosModel.producto,LugaresModel.lugar,DispositivosModel.codigo,DispositivosModel.marca,DispositivosModel.modelo,DispositivosModel.serie,StatusDevicesModel.descripcion).join(LugaresModel).join(StatusDevicesModel).order_by(DispositivosModel.producto.asc()).paginate(page=offset,per_page=limit,error_out=False)
-        rows = result.total
-        # lugar = LugaresModel.get_lugar_by_like(value,offset=1,limit=100)
-        
-        # if len(lugar.items)!=0:
-        #     for x in lugar.items:
-        #         lugares.append(x.id)
-        
-
-        # result = DispositivosModel.query.filter(or_(DispositivosModel.lugarId.in_(lugares),DispositivosModel.codigo.ilike(f'%{value}%') , DispositivosModel.producto.ilike(f'%{value}%') , DispositivosModel.marca.ilike(f'%{value}%') , DispositivosModel.modelo.ilike(f'%{value}%') , DispositivosModel.serie.ilike(f'%{value}%') , DispositivosModel.accesorios.ilike(f'%{value}%'))).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False)
-        return result,rows
-
-
-    @staticmethod
-    def get_devices_by_query(jsonFiltros,offset=1,limit=100):
-        #return DispositivosModel.query.filter_by(**jsonFiltros).paginate(page=offset,per_page=limit,error_out=False)
-        return DispositivosModel.query.filter_by(**jsonFiltros).order_by(DispositivosModel.id).paginate(page=offset,per_page=limit,error_out=False) 
-
-
-        if "fechaAltaRangoInicio" in jsonFiltros and "fechaAltaRangoFin" in jsonFiltros:
-            alta = jsonFiltros["fechaAltaRangoInicio"]
-            end = jsonFiltros["fechaAltaRangoFin"]
-            del jsonFiltros["fechaAltaRangoInicio"]
-            del jsonFiltros["fechaAltaRangoFin"]
-            alta = alta+"T00:00:00.000000"
-            end = end + "T23:59:59.999999"
-            return ComercioModel.query.filter_by(**jsonFiltros).filter(ComercioModel.fechaAlta >= alta).filter(ComercioModel.fechaAlta <= end).paginate(page=offset,per_page=limit,error_out=False),rows
-        
-        elif "fechaAltaRangoInicio" in jsonFiltros:
-            alta = jsonFiltros["fechaAltaRangoInicio"]
-            del jsonFiltros["fechaAltaRangoInicio"]
-            return ComercioModel.query.filter_by(**jsonFiltros).filter(cast(ComercioModel.fechaAlta,Date) == alta).paginate(page=offset,per_page=limit,error_out=False),rows
-        
-        else:
-            return ComercioModel.query.filter_by(**jsonFiltros).paginate(page=offset,per_page=limit,error_out=False),rows
-
-    @staticmethod
-    def get_devices_total_price():
-        total_costo = (
-            db.session.query(
-                func.sum(cast(DispositivosModel.costo, DECIMAL(18, 2)))
-            )
-            .filter(
-                DispositivosModel.costo != '',
-                DispositivosModel.costo != None,
-                func.isnumeric(DispositivosModel.costo) == 1
-            )
-            .scalar()
+    def search_by_codigo(db: Session, value: str, offset: int = 0, limit: int = 10):
+        """Search devices by codigo pattern"""
+        query = (
+            select(DispositivosModel)
+            .where(DispositivosModel.codigo.ilike(f'%{value}%'))
+            .order_by(DispositivosModel.producto)
+            .offset(offset)
+            .limit(limit)
         )
+        return db.execute(query).scalars().all()
 
-        return total_costo
+    @staticmethod
+    def search_by_multiple_fields(db: Session, value: str, offset: int = 0, limit: int = 100):
+        """Search devices by multiple fields"""
+        search_pattern = f'%{value}%'
+        query = (
+            select(DispositivosModel)
+            .where(
+                or_(
+                    DispositivosModel.codigo.ilike(search_pattern),
+                    DispositivosModel.producto.ilike(search_pattern),
+                    DispositivosModel.marca.ilike(search_pattern),
+                    DispositivosModel.modelo.ilike(search_pattern),
+                    DispositivosModel.serie.ilike(search_pattern),
+                    DispositivosModel.accesorios.ilike(search_pattern),
+                )
+            )
+            .order_by(DispositivosModel.producto)
+            .offset(offset)
+            .limit(limit)
+        )
+        return db.execute(query).scalars().all()
 
-    def __repr(self):
-        return '<id {}>'.format(self.id)
+    @staticmethod
+    def create_device(db: Session, **kwargs) -> 'DispositivosModel':
+        """Create a new device"""
+        # Guard against relationship/meta fields coming from Pydantic payloads.
+        for key in ("id", "lugar", "status", "fechaAlta", "fechaUltimaModificacion"):
+            kwargs.pop(key, None)
+        new_device = DispositivosModel(**kwargs)
+        db.add(new_device)
+        db.commit()
+        db.refresh(new_device)
+        return new_device
 
-class DispositivosSchema(Schema):
-    """
-    Catalogo Schema
-    """
-    id = fields.Int()
-    codigo = fields.Str(required=True, validate=[validate.Length(max=100)])
-    producto = fields.Str(required=True, validate=[validate.Length(max=100)])
-    marca = fields.Str(required=True, validate=[validate.Length(max=100)])
-    modelo = fields.Str(required=True, validate=[validate.Length(max=100)])
-    origen = fields.Str( validate=[validate.Length(max=100)])
-    foto = fields.Str()
-    cantidad = fields.Integer(required=True)
-    observaciones = fields.Str( validate=[validate.Length(max=250)])
-    lugarId = fields.Integer(required=True)
-    pertenece = fields.Str( validate=[validate.Length(max=45)])
-    descompostura = fields.Str( validate=[validate.Length(max=100)])
-    costo = fields.Integer()
-    compra = fields.Str( validate=[validate.Length(max=100)])
-    proveedor = fields.Str( validate=[validate.Length(max=100)])
-    idMov = fields.Str( validate=[validate.Length(max=500)])
-    statusId= fields.Integer(required=True)
-    lugar=fields.Nested(LugaresSchema)
-    status = fields.Nested(StatusDevicesSchema)
-    fechaAlta = fields.DateTime()
-    fechaUltimaModificacion = fields.DateTime()
-    serie = fields.Str( validate=[validate.Length(max=100)])
-    accesorios = fields.Str( validate=[validate.Length(max=100)])
-    
+    def update(self, db: Session, **kwargs):
+        """Update device fields"""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        self.fechaUltimaModificacion = datetime.utcnow()
+        db.add(self)
+        db.commit()
+        db.refresh(self)
+        return self
 
-class DispositivosSchemaSomeFields(Schema):
-    """
-    Catalogo Schema
-    """
-    id = fields.Int()
-    codigo = fields.Str(required=True, validate=[validate.Length(max=100)])
-    producto = fields.Str(required=True, validate=[validate.Length(max=100)])
-    marca = fields.Str(required=True, validate=[validate.Length(max=100)])
-    modelo = fields.Str(required=True, validate=[validate.Length(max=100)])
-    origen = fields.Str( validate=[validate.Length(max=100)])
-    foto = fields.Str()
-    cantidad = fields.Integer(required=True)
-    observaciones = fields.Str( validate=[validate.Length(max=250)])
-    lugarId = fields.Integer(required=True)
-    pertenece = fields.Str( validate=[validate.Length(max=45)])
-    descompostura = fields.Str( validate=[validate.Length(max=100)])
-    costo = fields.Integer()
-    compra = fields.Str( validate=[validate.Length(max=100)])
-    proveedor = fields.Str( validate=[validate.Length(max=100)])
-    idMov = fields.Str( validate=[validate.Length(max=500)])
-    statusId= fields.Integer(required=True)
-    lugar=fields.Nested(LugaresSchema)
-    status = fields.Nested(StatusDevicesSchema)
-    fechaAlta = fields.DateTime()
-    fechaUltimaModificacion = fields.DateTime()
-    serie = fields.Str( validate=[validate.Length(max=100)])
-    accesorios = fields.Str( validate=[validate.Length(max=100)])
-    lugar = fields.Str( validate=[validate.Length(max=100)])
-    descripcion = fields.Str( validate=[validate.Length(max=100)])
-    
+    def delete(self, db: Session):
+        """Delete device"""
+        db.delete(self)
+        db.commit()
 
-class DispositivosSchemaUpdate(Schema):
-    """
-    Catalogo Schema
-    """
-    id = fields.Int(required=True)
-    codigo = fields.Str(validate=[validate.Length(max=100)])
-    producto = fields.Str(validate=[validate.Length(max=100)])
-    marca = fields.Str(validate=[validate.Length(max=100)])
-    modelo = fields.Str(validate=[validate.Length(max=100)])
-    origen = fields.Str(validate=[validate.Length(max=100)])
-    foto = fields.Str()
-    cantidad = fields.Integer()
-    observaciones = fields.Str(validate=[validate.Length(max=250)])
-    lugarId = fields.Integer()
-    statusId= fields.Integer()
-    pertenece = fields.Str(validate=[validate.Length(max=100)])
-    descompostura = fields.Str(validate=[validate.Length(max=100)])
-    costo = fields.Integer()
-    compra = fields.Str(validate=[validate.Length(max=100)])
-    proveedor = fields.Str(validate=[validate.Length(max=100)])
-    idMov = fields.Str(validate=[validate.Length(max=500)])
-    lugar=fields.Nested(LugaresSchema)
-    status = fields.Nested(StatusDevicesSchema)
-    fechaAlta = fields.DateTime()
-    fechaUltimaModificacion = fields.DateTime()
-    serie = fields.Str( validate=[validate.Length(max=100)])
-    accesorios = fields.Str( validate=[validate.Length(max=100)])
-    
-
-class DispositivosSchemaQuery(Schema):
-    """
-    Catalogo Schema
-    """
-    id = fields.Int()
-    codigo = fields.Str(validate=[validate.Length(max=100)])
-    producto = fields.Str(validate=[validate.Length(max=100)])
-    marca = fields.Str(validate=[validate.Length(max=100)])
-    modelo = fields.Str(validate=[validate.Length(max=100)])
-    origen = fields.Str(validate=[validate.Length(max=100)])
-    foto = fields.Str()
-    cantidad = fields.Integer()
-    observaciones = fields.Str(validate=[validate.Length(max=250)])
-    lugarId = fields.Integer()
-    statusId= fields.Integer()
-    pertenece = fields.Str(validate=[validate.Length(max=100)])
-    descompostura = fields.Str(validate=[validate.Length(max=100)])
-    costo = fields.Integer()
-    lugar=fields.Nested(LugaresSchema)
-    status = fields.Nested(StatusDevicesSchema)
-    compra = fields.Str(validate=[validate.Length(max=100)])
-    proveedor = fields.Str(validate=[validate.Length(max=100)])
-    idMov = fields.Str(validate=[validate.Length(max=500)])
-    serie = fields.Str( validate=[validate.Length(max=100)])
-    accesorios = fields.Str( validate=[validate.Length(max=100)])
-
-
-class DispositivosSchemaCantity(Schema):
-    """
-    Catalogo Schema
-    """
-    total = fields.Int()
+    def __repr__(self):
+        return f'<Dispositivo {self.id}: {self.producto}>'

@@ -1,73 +1,75 @@
-from marshmallow import fields, Schema, validate
-import datetime
-from . import db
+"""StatusDevices Model using native SQLAlchemy 2.0"""
 
-class StatusDevicesModel(db.Model):
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, select
+from sqlalchemy.orm import Session
+
+from . import Base
+
+
+class StatusDevicesModel(Base):
     """
-    status Model
+    Status Devices Model
+    Table: invStatusDevices
     """
     
     __tablename__ = 'invStatusDevices'
 
-    id = db.Column(db.Integer, primary_key=True)
-    descripcion = db.Column(db.String(100))
-    fechaAlta = db.Column(db.DateTime)
-    fechaUltimaModificacion = db.Column(db.DateTime)
+    id = Column(Integer, primary_key=True, index=True)
+    descripcion = Column(String(100), nullable=False)
+    fechaAlta = Column(DateTime, default=datetime.utcnow)
+    fechaUltimaModificacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def __init__(self, data):
+    def __init__(self, descripcion: str):
         """
-        Class constructor
+        Initialize a new Status Device
         """
-        self.descripcion = data.get('descripcion')
-        self.fechaAlta = datetime.datetime.utcnow()
-        self.fechaUltimaModificacion = datetime.datetime.utcnow()
-     
-
-    def save(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self, data):
-        for key, item in data.items():
-            setattr(self, key, item)
-        self.fechaUltimaModificacion = datetime.datetime.utcnow()
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
+        self.descripcion = descripcion
+        self.fechaAlta = datetime.utcnow()
+        self.fechaUltimaModificacion = datetime.utcnow()
 
     @staticmethod
-    def get_all_status():
-        return StatusDevicesModel.query.all()
+    def get_all_status(db: Session):
+        """Get all status"""
+        query = select(StatusDevicesModel)
+        return db.execute(query).scalars().all()
 
     @staticmethod
-    def get_one_status(id):
-        return StatusDevicesModel.query.get(id)
+    def get_one_status(db: Session, id: int):
+        """Get a single status by ID"""
+        query = select(StatusDevicesModel).where(StatusDevicesModel.id == id)
+        return db.execute(query).scalar_one_or_none()
 
     @staticmethod
-    def get_status_by_nombre(value):
-        return StatusDevicesModel.query.filter_by(descripcion=value).first()
+    def get_status_by_nombre(db: Session, value: str):
+        """Get status by name"""
+        query = select(StatusDevicesModel).where(StatusDevicesModel.descripcion == value)
+        return db.execute(query).scalar_one_or_none()
 
-    def __repr(self):
-        return '<id {}>'.format(self.id)
+    @staticmethod
+    def create_status(db: Session, descripcion: str) -> 'StatusDevicesModel':
+        """Create a new status"""
+        new_status = StatusDevicesModel(descripcion=descripcion)
+        db.add(new_status)
+        db.commit()
+        db.refresh(new_status)
+        return new_status
 
-class StatusDevicesSchema(Schema):
-    """
-    lugar Schema
-    """
-    id = fields.Int()
-    descripcion = fields.Str(required=True, validate=[validate.Length(max=100)])
-    fechaAlta = fields.DateTime()
-    fechaUltimaModificacion = fields.DateTime()
+    def update(self, db: Session, **kwargs):
+        """Update status fields"""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        self.fechaUltimaModificacion = datetime.utcnow()
+        db.add(self)
+        db.commit()
+        db.refresh(self)
+        return self
 
+    def delete(self, db: Session):
+        """Delete status"""
+        db.delete(self)
+        db.commit()
 
-
-class StatusDevicesSchemaUpdate(Schema):
-    """
-    lugar Schema
-    """
-    id = fields.Int()
-    descripcion = fields.Str(validate=[validate.Length(max=100)])
-    fechaAlta = fields.DateTime()
-    fechaUltimaModificacion = fields.DateTime()
+    def __repr__(self):
+        return f'<StatusDevice {self.id}: {self.descripcion}>'
