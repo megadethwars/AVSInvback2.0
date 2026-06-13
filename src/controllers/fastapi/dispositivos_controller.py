@@ -19,7 +19,7 @@ async def get_dispositivos(
 ) -> dict:
     rows = DispositivosModel.get_all_devices(db, offset=offset, limit=limit)
     serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
-    return _legacy_response(serialized, status.HTTP_200_OK, "TPM-3")
+    return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.get("/{dispositivo_id}", summary="Obtener dispositivo por ID")
@@ -86,7 +86,7 @@ async def update_dispositivo(
 ) -> dict:
     row = DispositivosModel.get_one_device(db, dispositivo_id)
     if not row:
-        return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
     payload = dispositivo_data.model_dump(exclude_unset=True, exclude_none=True)
     payload.pop("id", None)
@@ -150,19 +150,19 @@ async def dispositivos_filterdevice_fields() -> dict:
 
 @router.get("/filterdeviceminFields", summary="Filtrar dispositivos minimos")
 async def dispositivos_filterdevice_min_fields() -> dict:
-    return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdeviceminFields pendiente de migracion")
+    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdeviceminFields pendiente de migracion")
 
 
 @router.get("/filterdeviceByCodigo", summary="Filtrar dispositivos por codigo")
 async def dispositivos_filter_by_codigo() -> dict:
-    return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdeviceByCodigo pendiente de migracion")
+    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.filterdeviceByCodigo pendiente de migracion")
 
 
 @router.get("/alldeviceSomeFields", summary="Listar dispositivos campos seleccionados")
 async def dispositivos_some_fields() -> dict:
-    return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.alldeviceSomeFields pendiente de migracion")
+    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.alldeviceSomeFields pendiente de migracion")
 
 
 @router.get("/getAmount", summary="Obtener monto total dispositivos")
 async def dispositivos_get_amount() -> dict:
-    return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.getAmount pendiente de migracion")
+    return fastapi_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", message="dispositivos.getAmount pendiente de migracion")

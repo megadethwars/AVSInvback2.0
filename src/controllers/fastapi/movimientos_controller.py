@@ -306,7 +306,9 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
 				)
 		except Exception as err:
 			db.rollback()
-		lista_errores.append(partial_response("TPM-7", "", str(err), item.get("id", 0)))
+			lista_errores.append(partial_response("TPM-7", "", str(err), item.get("id", 0)))
+
+	if len(lista_objetos_creados) > 0:
 		if len(lista_errores) == 0:
 			return fastapi_response(lista_objetos_creados, status.HTTP_201_CREATED, "TPM-8")
 		return fastapi_response(lista_objetos_creados, status.HTTP_201_CREATED, "TPM-16", items=lista_errores)
