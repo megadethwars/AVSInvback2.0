@@ -86,6 +86,153 @@ def _insert_movimiento(db: Session, data: dict) -> int:
 	return int(db.execute(query, data).scalar_one())
 
 
+def _json_safe_dict(record: dict | None) -> dict | None:
+	if record is None:
+		return None
+
+	output = {}
+	for key, value in record.items():
+		if isinstance(value, datetime):
+			output[key] = value.isoformat()
+		else:
+			output[key] = value
+	return output
+
+
+def _get_lugar(db: Session, lugar_id: int | None) -> dict | None:
+	if lugar_id is None:
+		return None
+	query = text(
+		"""
+		SELECT id, lugar, fechaAlta, fechaUltimaModificacion, activo
+		FROM invLugares
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": lugar_id}).mappings().first()
+	return _json_safe_dict(dict(row)) if row else None
+
+
+def _get_status_device(db: Session, status_id: int | None) -> dict | None:
+	if status_id is None:
+		return None
+	query = text(
+		"""
+		SELECT id, descripcion, fechaAlta, fechaUltimaModificacion
+		FROM invStatusDevices
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": status_id}).mappings().first()
+	return _json_safe_dict(dict(row)) if row else None
+
+
+def _get_tipo_movimiento(db: Session, tipo_mov_id: int | None) -> dict | None:
+	if tipo_mov_id is None:
+		return None
+	query = text(
+		"""
+		SELECT id, tipo, fechaAlta, fechaUltimaModificacion
+		FROM invTipoMoves
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": tipo_mov_id}).mappings().first()
+	return _json_safe_dict(dict(row)) if row else None
+
+
+def _get_rol(db: Session, rol_id: int | None) -> dict | None:
+	if rol_id is None:
+		return None
+	query = text(
+		"""
+		SELECT id, nombre, fechaAlta, fechaUltimaModificacion
+		FROM invRoles
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": rol_id}).mappings().first()
+	return _json_safe_dict(dict(row)) if row else None
+
+
+def _get_status_usuario(db: Session, status_id: int | None) -> dict | None:
+	if status_id is None:
+		return None
+	query = text(
+		"""
+		SELECT id, descripcion, fechaAlta, fechaUltimaModificacion
+		FROM invStatusUsuarios
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": status_id}).mappings().first()
+	return _json_safe_dict(dict(row)) if row else None
+
+
+def _get_usuario(db: Session, usuario_id: int | None) -> dict | None:
+	if usuario_id is None:
+		return None
+	query = text(
+		"""
+		SELECT id, nombre, username, apellidoPaterno, apellidoMaterno, password, telefono, correo, foto, rolId, statusId,
+			   fechaAlta, fechaUltimaModificacion
+		FROM invUsuarios
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": usuario_id}).mappings().first()
+	if not row:
+		return None
+
+	usuario = _json_safe_dict(dict(row))
+	usuario["rol"] = _get_rol(db, usuario.get("rolId"))
+	usuario["status"] = _get_status_usuario(db, usuario.get("statusId"))
+	return usuario
+
+
+def _get_dispositivo(db: Session, dispositivo_id: int | None) -> dict | None:
+	if dispositivo_id is None:
+		return None
+	query = text(
+		"""
+		SELECT id, codigo, producto, marca, modelo, origen, foto, cantidad, observaciones, lugarId, pertenece,
+			   descompostura, costo, compra, proveedor, idMov, statusId, fechaAlta, fechaUltimaModificacion,
+			   serie, accesorios
+		FROM invDispositivos
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": dispositivo_id}).mappings().first()
+	if not row:
+		return None
+
+	dispositivo = _json_safe_dict(dict(row))
+	dispositivo["lugar"] = _get_lugar(db, dispositivo.get("lugarId"))
+	dispositivo["status"] = _get_status_device(db, dispositivo.get("statusId"))
+	return dispositivo
+
+
+def _build_movimiento_response(db: Session, movimiento_id: int) -> dict | None:
+	query = text(
+		"""
+		SELECT id, idMovimiento, dispositivoId, usuarioId, tipoMovId, LugarId, comentarios, foto, foto2,
+			   fechaAlta, fechaUltimaModificacion, cantidad_Actual
+		FROM invMovimientos
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": movimiento_id}).mappings().first()
+	if not row:
+		return None
+
+	movimiento = _json_safe_dict(dict(row))
+	movimiento["lugar"] = _get_lugar(db, movimiento.get("LugarId"))
+	movimiento["dispositivo"] = _get_dispositivo(db, movimiento.get("dispositivoId"))
+	movimiento["tipoMovimiento"] = _get_tipo_movimiento(db, movimiento.get("tipoMovId"))
+	movimiento["usuario"] = _get_usuario(db, movimiento.get("usuarioId"))
+	return movimiento
+
+
 @router.get("", summary="Listar movimientos")
 async def movimientos_list() -> dict:
 	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "movimientos.list pendiente de migracion")
@@ -165,22 +312,26 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
 			db.add(dispositivo)
 			db.commit()
 
-			lista_objetos_creados.append(
-				{
-					"id": created_id,
-					"dispositivoId": item.get("dispositivoId"),
-					"usuarioId": item.get("usuarioId"),
-					"idMovimiento": item.get("idMovimiento"),
-					"tipoMovId": item.get("tipoMovId"),
-					"LugarId": item.get("LugarId"),
-					"comentarios": item.get("comentarios"),
-					"foto": item.get("foto"),
-					"foto2": item.get("foto2"),
-					"cantidad_Actual": cantidad_actual,
-					"fechaAlta": now.isoformat(),
-					"fechaUltimaModificacion": now.isoformat(),
-				}
-			)
+			movimiento_completo = _build_movimiento_response(db, created_id)
+			if movimiento_completo:
+				lista_objetos_creados.append(movimiento_completo)
+			else:
+				lista_objetos_creados.append(
+					{
+						"id": created_id,
+						"dispositivoId": item.get("dispositivoId"),
+						"usuarioId": item.get("usuarioId"),
+						"idMovimiento": item.get("idMovimiento"),
+						"tipoMovId": item.get("tipoMovId"),
+						"LugarId": item.get("LugarId"),
+						"comentarios": item.get("comentarios"),
+						"foto": item.get("foto"),
+						"foto2": item.get("foto2"),
+						"cantidad_Actual": cantidad_actual,
+						"fechaAlta": now.isoformat(),
+						"fechaUltimaModificacion": now.isoformat(),
+					}
+				)
 		except Exception as err:
 			db.rollback()
 			lista_errores.append(returnCodes.partial_response("TPM-7", "", str(err), item.get("id", 0)))
@@ -194,23 +345,137 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
 
 
 @router.put("", summary="Actualizar movimiento")
-async def movimientos_update() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "movimientos.update pendiente de migracion")
+async def movimientos_update(payload: dict, db: Session = Depends(get_db)) -> dict:
+	if not payload:
+		return _legacy_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+
+	try:
+		movimiento_id = payload.get("id")
+		existe_mov = db.execute(text("SELECT id FROM invMovimientos WHERE id = :id"), {"id": movimiento_id}).scalar_one_or_none()
+		if not existe_mov:
+			return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+		dispositivo_id = payload.get("dispositivoId")
+		if dispositivo_id:
+			existe_dispositivo = db.execute(text("SELECT id FROM invDispositivos WHERE id = :id"), {"id": dispositivo_id}).scalar_one_or_none()
+			if not existe_dispositivo:
+				return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=dispositivo_id)
+
+		lugar_id = payload.get("LugarId")
+		if lugar_id:
+			existe_lugar = db.execute(text("SELECT id FROM invLugares WHERE id = :id"), {"id": lugar_id}).scalar_one_or_none()
+			if not existe_lugar:
+				return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=lugar_id)
+
+		tipo_mov_id = payload.get("tipoMovId")
+		if tipo_mov_id:
+			existe_tipo = db.execute(text("SELECT id FROM invTipoMoves WHERE id = :id"), {"id": tipo_mov_id}).scalar_one_or_none()
+			if not existe_tipo:
+				return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=tipo_mov_id)
+
+		usuario_id = payload.get("usuarioId")
+		if usuario_id:
+			existe_usuario = db.execute(text("SELECT id FROM invUsuarios WHERE id = :id"), {"id": usuario_id}).scalar_one_or_none()
+			if not existe_usuario:
+				return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=usuario_id)
+
+		now = datetime.utcnow()
+		update_query = text(
+			"""
+			UPDATE invMovimientos
+			SET dispositivoId = COALESCE(:dispositivoId, dispositivoId),
+				LugarId = COALESCE(:LugarId, LugarId),
+				tipoMovId = COALESCE(:tipoMovId, tipoMovId),
+				cantidad = COALESCE(:cantidad, cantidad),
+				usuarioId = COALESCE(:usuarioId, usuarioId),
+				observaciones = COALESCE(:observaciones, observaciones),
+				fechaUltimaModificacion = :fechaUltimaModificacion
+			WHERE id = :id
+			"""
+		)
+		db.execute(update_query, {
+			"id": movimiento_id,
+			"dispositivoId": dispositivo_id,
+			"LugarId": lugar_id,
+			"tipoMovId": tipo_mov_id,
+			"cantidad": payload.get("cantidad"),
+			"usuarioId": usuario_id,
+			"observaciones": payload.get("observaciones"),
+			"fechaUltimaModificacion": now
+		})
+		db.commit()
+
+		movimiento_completo = _build_movimiento_response(db, movimiento_id)
+		return _legacy_response(movimiento_completo, status.HTTP_200_OK, "TPM-6")
+	except Exception as err:
+		db.rollback()
+		return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
 
 
 @router.get("/{id}", summary="Obtener movimiento por ID")
-async def movimientos_get_one(id: int) -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", f"movimientos.get({id}) pendiente de migracion")
+async def movimientos_get_one(id: int, db: Session = Depends(get_db)) -> dict:
+	movimiento = _build_movimiento_response(db, id)
+	if not movimiento:
+		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+	return _legacy_response(movimiento, status.HTTP_200_OK, "TPM-3")
 
 
 @router.get("/LastOne/{id}", summary="Obtener ultimo movimiento por dispositivo")
-async def movimientos_last_one(id: int) -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", f"movimientos.lastone({id}) pendiente de migracion")
+async def movimientos_last_one(id: int, db: Session = Depends(get_db)) -> dict:
+	query = text(
+		"""
+		SELECT TOP 1 id FROM invMovimientos 
+		WHERE dispositivoId = :dispositivo_id AND tipoMovId = 1 
+		ORDER BY fechaAlta DESC
+		"""
+	)
+	last_mov_id = db.execute(query, {"dispositivo_id": id}).scalar_one_or_none()
+	if not last_mov_id:
+		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+
+	movimiento = _build_movimiento_response(db, last_mov_id)
+	if not movimiento:
+		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+	return _legacy_response(movimiento, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("/query", summary="Consultar movimientos")
-async def movimientos_query() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "movimientos.query pendiente de migracion")
+async def movimientos_query(payload: dict, db: Session = Depends(get_db)) -> dict:
+	base_query = "SELECT id, dispositivoId, LugarId, tipoMovId, cantidad, usuarioId, observaciones, fechaAlta, fechaUltimaModificacion FROM invMovimientos WHERE 1=1"
+	params = {}
+
+	if payload.get("dispositivoId"):
+		base_query += " AND dispositivoId = :dispositivoId"
+		params["dispositivoId"] = payload.get("dispositivoId")
+
+	if payload.get("LugarId"):
+		base_query += " AND LugarId = :LugarId"
+		params["LugarId"] = payload.get("LugarId")
+
+	if payload.get("tipoMovId"):
+		base_query += " AND tipoMovId = :tipoMovId"
+		params["tipoMovId"] = payload.get("tipoMovId")
+
+	if payload.get("usuarioId"):
+		base_query += " AND usuarioId = :usuarioId"
+		params["usuarioId"] = payload.get("usuarioId")
+
+	base_query += " ORDER BY fechaAlta DESC"
+
+	try:
+		rows = db.execute(text(base_query), params).mappings().fetchall()
+		movimientos = []
+		for row in rows:
+			mov_dict = _json_safe_dict(dict(row))
+			mov_dict["lugar"] = _get_lugar(db, mov_dict.get("LugarId"))
+			mov_dict["dispositivo"] = _get_dispositivo(db, mov_dict.get("dispositivoId"))
+			mov_dict["tipoMovimiento"] = _get_tipo_movimiento(db, mov_dict.get("tipoMovId"))
+			mov_dict["usuario"] = _get_usuario(db, mov_dict.get("usuarioId"))
+			movimientos.append(mov_dict)
+
+		return _legacy_response(movimientos, status.HTTP_200_OK, "TPM-3", is_query=True, total=len(movimientos))
+	except Exception as err:
+		return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
 
 
 @router.get("/filter", summary="Filtrar movimientos")

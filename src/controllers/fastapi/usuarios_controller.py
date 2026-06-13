@@ -1,18 +1,81 @@
-from fastapi import APIRouter, status
-from fastapi.responses import JSONResponse
+from datetime import datetime
 
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from werkzeug.security import generate_password_hash
+
+from ...database import get_db
 from ...shared import returnCodes
 
 router = APIRouter(prefix="/api/v1/usuarios", tags=["Usuarios"])
 
 
-def _legacy_response(res, status_code: int, app_code: str, message: str = "") -> JSONResponse:
+def _legacy_response(res, status_code: int, app_code: str, message: str = "", item=None) -> JSONResponse:
+	message_list = []
+	if message == "":
+		message_list.append({"status": returnCodes.app_codes[app_code]})
+	else:
+		message_list.append({"status": str(message)})
+
+	if item is None:
+		item = []
+	elif item != "" and not isinstance(item, list):
+		message_list.append({"object": item})
+
 	payload = {
 		"app_code": app_code,
-		"message": [{"status": returnCodes.app_codes[app_code] if message == "" else str(message)}],
+		"message": message_list,
 		"data": res,
 	}
 	return JSONResponse(status_code=status_code, content=payload)
+
+
+def _json_safe_dict(record: dict | None) -> dict | None:
+	if record is None:
+		return None
+	output = {}
+	for key, value in record.items():
+		if isinstance(value, datetime):
+			output[key] = value.isoformat()
+		else:
+			output[key] = value
+	return output
+
+
+def _get_rol(db: Session, rol_id: int | None) -> dict | None:
+	if rol_id is None:
+		return None
+	query = text("SELECT id, nombre, fechaAlta, fechaUltimaModificacion FROM invRoles WHERE id = :id")
+	row = db.execute(query, {"id": rol_id}).mappings().first()
+	return _json_safe_dict(dict(row)) if row else None
+
+
+def _get_status_usuario(db: Session, status_id: int | None) -> dict | None:
+	if status_id is None:
+		return None
+	query = text("SELECT id, descripcion, fechaAlta, fechaUltimaModificacion FROM invStatusUsuarios WHERE id = :id")
+	row = db.execute(query, {"id": status_id}).mappings().first()
+	return _json_safe_dict(dict(row)) if row else None
+
+
+def _get_usuario_full(db: Session, usuario_id: int) -> dict | None:
+	query = text(
+		"""
+		SELECT id, nombre, username, apellidoPaterno, apellidoMaterno, password, telefono, correo, foto, rolId, statusId,
+			   fechaAlta, fechaUltimaModificacion
+		FROM invUsuarios
+		WHERE id = :id
+		"""
+	)
+	row = db.execute(query, {"id": usuario_id}).mappings().first()
+	if not row:
+		return None
+	usuario = _json_safe_dict(dict(row))
+	usuario["rol"] = _get_rol(db, usuario.get("rolId"))
+	usuario["status"] = _get_status_usuario(db, usuario.get("statusId"))
+	return usuario
 
 
 @router.post("/login", summary="Login usuario")
@@ -26,13 +89,65 @@ async def users_update_password() -> dict:
 
 
 @router.get("", summary="Listar usuarios")
-async def users_list() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "usuarios.list pendiente de migracion")
+async def users_list(db: Session = Depends(get_db)) -> dict:
+	query = text("SELECT id, nombre, username, apellidoPaterno, apellidoMaterno, password, telefono, correo, foto, rolId, statusId, fechaAlta, fechaUltimaModificacion FROM invUsuarios WHERE statusId != 3")
+	rows = db.execute(query).mappings().fetchall()
+	usuarios = []
+	for row in rows:
+		usuario = _json_safe_dict(dict(row))
+		usuario["rol"] = _get_rol(db, usuario.get("rolId"))
+		usuario["status"] = _get_status_usuario(db, usuario.get("statusId"))
+		usuarios.append(usuario)
+	return _legacy_response(usuarios, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("", summary="Crear usuario")
-async def users_create() -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", "usuarios.create pendiente de migracion")
+async def users_create(payload: dict, db: Session = Depends(get_db)) -> dict:
+	if not payload:
+		return _legacy_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
+
+	try:
+		user_data = {
+			"nombre": payload.get("nombre"),
+			"username": payload.get("username"),
+			"apellidoPaterno": payload.get("apellidoPaterno"),
+			"apellidoMaterno": payload.get("apellidoMaterno"),
+			"password": generate_password_hash(payload.get("password", "")),
+			"telefono": payload.get("telefono"),
+			"correo": payload.get("correo"),
+			"foto": payload.get("foto"),
+			"rolId": payload.get("rolId"),
+			"statusId": payload.get("statusId"),
+		}
+
+		existe_user = db.execute(text("SELECT id FROM invUsuarios WHERE username = :username"), {"username": user_data["username"]}).scalar_one_or_none()
+		if existe_user:
+			return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-5", item=user_data["username"])
+
+		existe_rol = db.execute(text("SELECT id FROM invRoles WHERE id = :id"), {"id": user_data["rolId"]}).scalar_one_or_none()
+		if not existe_rol:
+			return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=user_data["rolId"])
+
+		existe_status = db.execute(text("SELECT id FROM invStatusUsuarios WHERE id = :id"), {"id": user_data["statusId"]}).scalar_one_or_none()
+		if not existe_status:
+			return _legacy_response(None, status.HTTP_409_CONFLICT, "TPM-4", item=user_data["statusId"])
+
+		now = datetime.utcnow()
+		insert_query = text(
+			"""
+			INSERT INTO invUsuarios (nombre, username, apellidoPaterno, apellidoMaterno, password, telefono, correo, foto, rolId, statusId, fechaAlta, fechaUltimaModificacion)
+			OUTPUT INSERTED.id
+			VALUES (:nombre, :username, :apellidoPaterno, :apellidoMaterno, :password, :telefono, :correo, :foto, :rolId, :statusId, :fechaAlta, :fechaUltimaModificacion)
+			"""
+		)
+		usuario_id = int(db.execute(insert_query, {**user_data, "fechaAlta": now, "fechaUltimaModificacion": now}).scalar_one())
+		db.commit()
+
+		usuario_completo = _get_usuario_full(db, usuario_id)
+		return _legacy_response(usuario_completo, status.HTTP_201_CREATED, "TPM-1")
+	except Exception as err:
+		db.rollback()
+		return _legacy_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
 
 
 @router.put("", summary="Actualizar usuario")
@@ -41,8 +156,11 @@ async def users_update() -> dict:
 
 
 @router.get("/{id}", summary="Obtener usuario por ID")
-async def users_get_one(id: int) -> dict:
-	return _legacy_response(None, status.HTTP_501_NOT_IMPLEMENTED, "TPM-7", f"usuarios.get({id}) pendiente de migracion")
+async def users_get_one(id: int, db: Session = Depends(get_db)) -> dict:
+	usuario = _get_usuario_full(db, id)
+	if not usuario:
+		return _legacy_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+	return _legacy_response(usuario, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("/query", summary="Consultar usuarios")
