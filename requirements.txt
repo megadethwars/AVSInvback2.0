@@ -6,6 +6,7 @@ flask-restx==1.1.0
 Flask-SQLAlchemy==3.0.5
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
+gunicorn==22.0.0
 PyMySQL==1.0.2
 pymssql==2.3.13
 
