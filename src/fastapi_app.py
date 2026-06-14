@@ -48,6 +48,8 @@ def create_app(env_name: str = "local") -> FastAPI:
 
     @app.get("/health", tags=["System"], summary="Health Check")
     async def health() -> dict[str, str]:
+
+        print("[INFO] Health check endpoint called")
         return {"status": "ok"}
 
     app.include_router(lugares_router)
