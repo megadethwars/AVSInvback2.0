@@ -1,43 +1,20 @@
 from fastapi import APIRouter, Body, Depends, Header, status
-from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ...database import get_db
-from ...models.DispositivosModel import DispositivosModel
+from ...models.DispositivosModelSchema import (
+    DispositivosModel,
+    DispositivosModelSchema,
+    DispositivosSchema,
+    DispositivosSchemaCreate,
+    DispositivosSchemaQuery,
+    DispositivosSchemaUpdate,
+)
 from ...models.LugaresModel import LugaresModel
 from ...models.StatusDevicesModel import StatusDevicesModel
-from ...schemas import DispositivosBase, DispositivosCreate, DispositivosQuery, DispositivosUpdate
 from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/dispositivos", tags=["Dispositivos"])
-
-
-def _serialize_some_fields(device: DispositivosModel) -> dict:
-    return {
-        "id": device.id,
-        "codigo": device.codigo,
-        "producto": device.producto,
-        "marca": device.marca,
-        "modelo": device.modelo,
-        "serie": device.serie,
-        "lugar": device.lugar.lugar if device.lugar else None,
-        "descripcion": device.status.descripcion if device.status else None,
-    }
-
-
-def _serialize_min_fields(device: DispositivosModel) -> dict:
-    return {
-        "id": device.id,
-        "codigo": device.codigo,
-        "producto": device.producto,
-        "marca": device.marca,
-        "modelo": device.modelo,
-        "serie": device.serie,
-        "cantidad": device.cantidad,
-        "lugar": device.lugar.lugar if device.lugar else None,
-        "descripcion": device.status.descripcion if device.status else None,
-    }
-
 
 @router.get("", summary="Listar dispositivos")
 async def get_dispositivos(
@@ -46,7 +23,7 @@ async def get_dispositivos(
     db: Session = Depends(get_db),
 ) -> dict:
     rows = DispositivosModel.get_all_devices(db, offset=offset, limit=limit)
-    serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
+    serialized = [DispositivosSchema.model_validate(item).model_dump(mode="json") for item in rows]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
@@ -60,13 +37,13 @@ async def search_dispositivos(
     rows = DispositivosModel.search_by_multiple_fields(db, search_term, offset, limit)
     if not rows:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-    serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
+    serialized = [DispositivosSchema.model_validate(item).model_dump(mode="json") for item in rows]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Crear dispositivo")
 async def create_dispositivo(
-    dispositivo_data: DispositivosCreate,
+    dispositivo_data: DispositivosSchemaCreate,
     db: Session = Depends(get_db),
 ) -> dict:
     existing_device = DispositivosModel.get_devices_by_codigo(db, dispositivo_data.codigo)
@@ -93,13 +70,13 @@ async def create_dispositivo(
     except Exception as err:
         return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
-    serialized_device = DispositivosBase.model_validate(row).model_dump(mode="json")
+    serialized_device = DispositivosSchema.model_validate(row).model_dump(mode="json")
     return fastapi_response([serialized_device], status.HTTP_201_CREATED, "TPM-8")
 
 
 @router.put("", summary="Actualizar dispositivo")
 async def update_dispositivo(
-    dispositivo_data: DispositivosUpdate,
+    dispositivo_data: DispositivosSchemaUpdate,
     db: Session = Depends(get_db),
 ) -> dict:
     if dispositivo_data.id is None:
@@ -132,7 +109,7 @@ async def update_dispositivo(
     except Exception as err:
         return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))
 
-    serialized = DispositivosBase.model_validate(updated).model_dump(mode="json")
+    serialized = DispositivosSchema.model_validate(updated).model_dump(mode="json")
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-6")
 
 
@@ -152,7 +129,7 @@ async def delete_dispositivo(dispositivo_id: int, db: Session = Depends(get_db))
 
 @router.post("/query", summary="Consultar dispositivos")
 async def dispositivos_query(
-    payload: DispositivosQuery,
+    payload: DispositivosSchemaQuery,
     offset: int = 0,
     limit: int = 10,
     db: Session = Depends(get_db),
@@ -161,24 +138,8 @@ async def dispositivos_query(
     if not filters_payload:
         return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
 
-    base_query = select(DispositivosModel)
-
-    for field_name, field_value in filters_payload.items():
-        if not hasattr(DispositivosModel, field_name):
-            continue
-        column = getattr(DispositivosModel, field_name)
-        if isinstance(field_value, str):
-            base_query = base_query.where(column.ilike(f"%{field_value}%"))
-        else:
-            base_query = base_query.where(column == field_value)
-
-    rows = db.execute(
-        base_query
-        .order_by(DispositivosModel.producto)
-        .offset(offset)
-        .limit(limit)
-    ).scalars().all()
-    serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
+    rows = DispositivosModelSchema.query_devices(db, filters_payload, offset, limit)
+    serialized = [DispositivosSchema.model_validate(item).model_dump(mode="json") for item in rows]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
@@ -193,7 +154,7 @@ async def dispositivos_filter_by_value(
     if not rows:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
-    serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
+    serialized = [DispositivosSchema.model_validate(item).model_dump(mode="json") for item in rows]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
@@ -228,34 +189,17 @@ async def dispositivos_filterdevice_fields(
     db: Session = Depends(get_db),
 ) -> dict:
     search_value = (header_value or value or "").strip()
-    base_query = select(DispositivosModel)
-    count_query = select(func.count()).select_from(DispositivosModel)
+    serialized, total_rows = DispositivosModelSchema.filter_fields(
+        db,
+        offset=offset,
+        limit=limit,
+        search_value=search_value,
+        in_storage=0,
+        minimal=False,
+    )
 
-    if search_value:
-        pattern = f"%{search_value}%"
-        filters = or_(
-            DispositivosModel.codigo.ilike(pattern),
-            DispositivosModel.producto.ilike(pattern),
-            DispositivosModel.marca.ilike(pattern),
-            DispositivosModel.modelo.ilike(pattern),
-            DispositivosModel.serie.ilike(pattern),
-            DispositivosModel.accesorios.ilike(pattern),
-        )
-        base_query = base_query.where(filters)
-        count_query = count_query.where(filters)
-
-    total_rows = int(db.execute(count_query).scalar() or 0)
-    rows = db.execute(
-        base_query
-        .order_by(DispositivosModel.producto)
-        .offset(offset)
-        .limit(limit)
-    ).scalars().all()
-
-    if not rows:
+    if not serialized:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-
-    serialized = [_serialize_some_fields(row) for row in rows]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
 
 
@@ -269,37 +213,17 @@ async def dispositivos_filterdevice_min_fields(
     db: Session = Depends(get_db),
 ) -> dict:
     search_value = (header_value or value or "").strip()
-    base_query = select(DispositivosModel)
-    count_query = select(func.count()).select_from(DispositivosModel)
+    serialized, total_rows = DispositivosModelSchema.filter_fields(
+        db,
+        offset=offset,
+        limit=limit,
+        search_value=search_value,
+        in_storage=inStorage,
+        minimal=True,
+    )
 
-    if search_value:
-        pattern = f"%{search_value}%"
-        filters = or_(
-            DispositivosModel.codigo.ilike(pattern),
-            DispositivosModel.producto.ilike(pattern),
-            DispositivosModel.marca.ilike(pattern),
-            DispositivosModel.modelo.ilike(pattern),
-            DispositivosModel.serie.ilike(pattern),
-        )
-        base_query = base_query.where(filters)
-        count_query = count_query.where(filters)
-
-    if int(inStorage) == 1:
-        base_query = base_query.where(DispositivosModel.cantidad > 0)
-        count_query = count_query.where(DispositivosModel.cantidad > 0)
-
-    total_rows = int(db.execute(count_query).scalar() or 0)
-    rows = db.execute(
-        base_query
-        .order_by(DispositivosModel.producto)
-        .offset(offset)
-        .limit(limit)
-    ).scalars().all()
-
-    if not rows:
+    if not serialized:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-
-    serialized = [_serialize_min_fields(row) for row in rows]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
 
 
@@ -312,7 +236,7 @@ async def dispositivos_filter_by_codigo(
     if not row:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
-    serialized = DispositivosBase.model_validate(row).model_dump(mode="json")
+    serialized = DispositivosSchema.model_validate(row).model_dump(mode="json")
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
@@ -322,32 +246,20 @@ async def dispositivos_some_fields(
     limit: int = 100,
     db: Session = Depends(get_db),
 ) -> dict:
-    total_rows = int(db.execute(select(func.count()).select_from(DispositivosModel)).scalar() or 0)
-    rows = db.execute(
-        select(DispositivosModel)
-        .order_by(DispositivosModel.producto)
-        .offset(offset)
-        .limit(limit)
-    ).scalars().all()
+    serialized, total_rows = DispositivosModelSchema.all_some_fields(db, offset, limit)
 
-    if not rows:
+    if not serialized:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-
-    serialized = [_serialize_some_fields(row) for row in rows]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
 
 
 @router.get("/getAmount", summary="Obtener monto total dispositivos")
 async def dispositivos_get_amount(db: Session = Depends(get_db)) -> dict:
-    rows_count = int(db.execute(select(func.count()).select_from(DispositivosModel)).scalar() or 0)
+    rows_count = len(DispositivosModel.get_all_devices(db, offset=0, limit=1))
     if rows_count == 0:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
-    total_amount = db.execute(
-        select(func.coalesce(func.sum(func.coalesce(DispositivosModel.costo, 0) * func.coalesce(DispositivosModel.cantidad, 0)), 0))
-    ).scalar()
-
-    serialized = {"TotalAmount": float(total_amount or 0)}
+    serialized = {"TotalAmount": DispositivosModelSchema.total_amount(db)}
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
@@ -356,5 +268,5 @@ async def get_dispositivo(dispositivo_id: int, db: Session = Depends(get_db)) ->
     row = DispositivosModel.get_one_device(db, dispositivo_id)
     if not row:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-    serialized = DispositivosBase.model_validate(row).model_dump(mode="json")
+    serialized = DispositivosSchema.model_validate(row).model_dump(mode="json")
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
