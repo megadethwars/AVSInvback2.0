@@ -21,9 +21,9 @@ app_codes = {
     "TPM-16": "Ocurrio un error al crear algunos registros",
     "TPM-17":"No hay suficientes equipos para ejecutar salida",
     "TPM-18":"Acceso autorizado",
-    "TPM-19":"Usuario dado de baja, error en inicio de sesion"
+    "TPM-19":"Usuario dado de baja, error en inicio de sesion",
+    "TPM-20":"el producto ya esta en almacen"
 }
-
 
 def partial_response(app_code,message="",name="",id=0):
     if message=="":

@@ -357,6 +357,16 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
             lista_errores.append(partial_response("TPM-5", "el tipo de movimiento no existe", item.get("tipoMovId"), item.get("id", 0)))
             continue
 
+        # Business rule: entrada (tipoMovId=2) to almacen (LugarId=1) is invalid
+        # when the device is already located in almacen.
+        if int(item.get("tipoMovId") or 0) == 2 and int(item.get("LugarId") or 0) == 1 and int(dispositivo.lugarId or 0) == 1:
+            return fastapi_response(
+                None,
+                status.HTTP_409_CONFLICT,
+                "TPM-20",
+                items=[partial_response("TPM-20", name=str(item.get("dispositivoId")), id=item.get("id", 0))],
+            )
+
         cantidad_actual = int(item.get("cantidad_Actual") or 1)
         if cantidad_actual <= 0:
             cantidad_actual = 1
