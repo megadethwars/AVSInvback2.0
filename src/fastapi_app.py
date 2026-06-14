@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 
 from .database import init_db
 from .controllers.fastapi import (
@@ -17,6 +18,8 @@ from .controllers.fastapi import (
 
 
 def create_app(env_name: str = "local") -> FastAPI:
+    logger = logging.getLogger("uvicorn.error")
+
     app = FastAPI(
         title="Inventory API",
         version="2.0.0",
@@ -44,12 +47,11 @@ def create_app(env_name: str = "local") -> FastAPI:
     async def startup_event():
         """Initialize database tables on startup"""
         init_db()
-        print("✓ Database initialized")
+        logger.info("Database initialized")
 
     @app.get("/health", tags=["System"], summary="Health Check")
     async def health() -> dict[str, str]:
-
-        print("[INFO] Health check endpoint called")
+        logger.info("Health check endpoint called")
         return {"status": "ok"}
 
     app.include_router(lugares_router)
