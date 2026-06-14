@@ -1,14 +1,17 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import text
+from sqlalchemy import MetaData, Table, insert, select, update
 from sqlalchemy.orm import Session
 
-from ...database import get_db
+from ...database import engine, get_db
 from ...schemas import RolesCreate, RolesUpdate
 from ...shared.returnCodes import fastapi_response
 
 router = APIRouter(prefix="/api/v1/roles", tags=["Roles"])
+
+_metadata = MetaData()
+_roles = Table("invRoles", _metadata, autoload_with=engine)
 
 
 def _json_safe_dict(record: dict | None) -> dict | None:
@@ -24,21 +27,19 @@ def _json_safe_dict(record: dict | None) -> dict | None:
 
 
 def _get_role(db: Session, role_id: int) -> dict | None:
-	query = text(
-		"""
-		SELECT id, nombre, fechaAlta, fechaUltimaModificacion
-		FROM invRoles
-		WHERE id = :id
-		"""
+	stmt = (
+		select(_roles.c.id, _roles.c.nombre, _roles.c.fechaAlta, _roles.c.fechaUltimaModificacion)
+		.where(_roles.c.id == role_id)
+		.limit(1)
 	)
-	row = db.execute(query, {"id": role_id}).mappings().first()
+	row = db.execute(stmt).mappings().first()
 	return _json_safe_dict(dict(row)) if row else None
 
 
 @router.get("", summary="Listar roles")
 async def roles_list(db: Session = Depends(get_db)) -> dict:
-	query = text("SELECT id, nombre, fechaAlta, fechaUltimaModificacion FROM invRoles ORDER BY nombre")
-	rows = db.execute(query).mappings().fetchall()
+	stmt = select(_roles.c.id, _roles.c.nombre, _roles.c.fechaAlta, _roles.c.fechaUltimaModificacion).order_by(_roles.c.nombre)
+	rows = db.execute(stmt).mappings().fetchall()
 	roles = [_json_safe_dict(dict(row)) for row in rows]
 	return fastapi_response(roles, status.HTTP_200_OK, "TPM-3")
 
@@ -46,27 +47,17 @@ async def roles_list(db: Session = Depends(get_db)) -> dict:
 @router.post("", summary="Crear rol")
 async def roles_create(payload: RolesCreate, db: Session = Depends(get_db)) -> dict:
 	try:
-		existing = db.execute(
-			text("SELECT TOP 1 id FROM invRoles WHERE nombre = :nombre"),
-			{"nombre": payload.nombre},
-		).scalar_one_or_none()
+		existing = db.execute(select(_roles.c.id).where(_roles.c.nombre == payload.nombre).limit(1)).scalar_one_or_none()
 		if existing:
 			return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-5", items=[{"object": payload.nombre}])
 
 		now = datetime.utcnow()
-		insert_query = text(
-			"""
-			INSERT INTO invRoles (nombre, fechaAlta, fechaUltimaModificacion)
-			OUTPUT INSERTED.id
-			VALUES (:nombre, :fechaAlta, :fechaUltimaModificacion)
-			"""
+		insert_stmt = (
+			insert(_roles)
+			.values(nombre=payload.nombre, fechaAlta=now, fechaUltimaModificacion=now)
+			.returning(_roles.c.id)
 		)
-		new_id = int(
-			db.execute(
-				insert_query,
-				{"nombre": payload.nombre, "fechaAlta": now, "fechaUltimaModificacion": now},
-			).scalar_one()
-		)
+		new_id = int(db.execute(insert_stmt).scalar_one())
 		db.commit()
 
 		created = _get_role(db, new_id)
@@ -96,15 +87,12 @@ async def roles_update(payload: RolesUpdate, db: Session = Depends(get_db)) -> d
 	update_fields["fechaUltimaModificacion"] = datetime.utcnow()
 
 	try:
-		query = text(
-			"""
-			UPDATE invRoles
-			SET nombre = COALESCE(:nombre, nombre),
-				fechaUltimaModificacion = :fechaUltimaModificacion
-			WHERE id = :id
-			"""
+		stmt = (
+			update(_roles)
+			.where(_roles.c.id == int(payload.id))
+			.values(nombre=update_fields.get("nombre"), fechaUltimaModificacion=update_fields["fechaUltimaModificacion"])
 		)
-		db.execute(query, update_fields)
+		db.execute(stmt)
 		db.commit()
 		updated = _get_role(db, int(payload.id))
 		return fastapi_response(updated, status.HTTP_200_OK, "TPM-6")
