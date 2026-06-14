@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ...database import get_db
-from ...models.LugaresModel import LugaresModel
-from ...schemas import LugaresBase, LugaresCreate, LugaresUpdate
+from ...models.LugaresModelSchema import LugaresModel, LugaresSchema, LugaresSchemaCreate, LugaresSchemaUpdate
 from ...shared.returnCodes import fastapi_response
 
 router = APIRouter(prefix="/api/v1/lugares", tags=["Lugares"])
@@ -13,7 +12,7 @@ router = APIRouter(prefix="/api/v1/lugares", tags=["Lugares"])
 @router.get("", summary="Listar todos los lugares")
 async def get_lugares(db: Session = Depends(get_db)) -> dict:
     lugares = LugaresModel.get_all_lugares(db)
-    serialized = [LugaresBase.model_validate(item).model_dump(mode="json") for item in lugares]
+    serialized = [LugaresSchema.model_validate(item).model_dump(mode="json") for item in lugares]
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
@@ -22,12 +21,12 @@ async def get_lugar(item_id: int, db: Session = Depends(get_db)) -> dict:
     lugar = LugaresModel.get_one_lugar(db, item_id)
     if not lugar:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
-    serialized = LugaresBase.model_validate(lugar).model_dump(mode="json")
+    serialized = LugaresSchema.model_validate(lugar).model_dump(mode="json")
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Crear lugar")
-async def create_lugar(lugar_data: LugaresCreate, db: Session = Depends(get_db)) -> dict:
+async def create_lugar(lugar_data: LugaresSchemaCreate, db: Session = Depends(get_db)) -> dict:
     try:
         new_lugar = LugaresModel.create_lugar(
             db,
@@ -37,12 +36,12 @@ async def create_lugar(lugar_data: LugaresCreate, db: Session = Depends(get_db))
     except Exception as err:
         return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
 
-    serialized = LugaresBase.model_validate(new_lugar).model_dump(mode="json")
+    serialized = LugaresSchema.model_validate(new_lugar).model_dump(mode="json")
     return fastapi_response(serialized, status.HTTP_201_CREATED, "TPM-1")
 
 
 @router.put("", summary="Actualizar lugar")
-async def update_lugar(lugar_data: LugaresUpdate, db: Session = Depends(get_db)) -> dict:
+async def update_lugar(lugar_data: LugaresSchemaUpdate, db: Session = Depends(get_db)) -> dict:
     if lugar_data.id is None:
         return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2", "id es requerido")
 
@@ -61,7 +60,7 @@ async def update_lugar(lugar_data: LugaresUpdate, db: Session = Depends(get_db))
     except Exception as err:
         return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", str(err))
 
-    serialized = LugaresBase.model_validate(updated_lugar).model_dump(mode="json")
+    serialized = LugaresSchema.model_validate(updated_lugar).model_dump(mode="json")
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-6")
 
 

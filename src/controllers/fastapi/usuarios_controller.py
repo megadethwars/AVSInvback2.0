@@ -1,119 +1,32 @@
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import MetaData, Table, cast, insert, select
 from sqlalchemy.orm import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from ...database import engine, get_db
+from ...database import get_db
+from ...models.RolesModelSchema import RolesModel
+from ...models.EstatusUsuariosModelSchema import EstatusUsuariosModel
+from ...models.UsuariosModelSchema import UsuariosLoginSchema, UsuariosModel
 from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/usuarios", tags=["Usuarios"])
-
-
-_metadata = MetaData()
-_usuarios = Table("invUsuarios", _metadata, autoload_with=engine)
-_roles = Table("invRoles", _metadata, autoload_with=engine)
-_status_usuarios = Table("invStatusUsuarios", _metadata, autoload_with=engine)
-
-
-def _json_safe_value(value):
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    if isinstance(value, dict):
-        return {key: _json_safe_value(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_json_safe_value(item) for item in value]
-    return value
-
-
-def _base_usuario_join_stmt():
-    return (
-        select(
-            _usuarios.c.id.label("usuario_id"),
-            _usuarios.c.nombre.label("usuario_nombre"),
-            _usuarios.c.username.label("usuario_username"),
-            _usuarios.c.apellidoPaterno.label("usuario_apellidoPaterno"),
-            _usuarios.c.apellidoMaterno.label("usuario_apellidoMaterno"),
-            _usuarios.c.password.label("usuario_password"),
-            _usuarios.c.telefono.label("usuario_telefono"),
-            _usuarios.c.correo.label("usuario_correo"),
-            _usuarios.c.foto.label("usuario_foto"),
-            _usuarios.c.rolId.label("usuario_rolId"),
-            _usuarios.c.statusId.label("usuario_statusId"),
-            _usuarios.c.fechaAlta.label("usuario_fechaAlta"),
-            _usuarios.c.fechaUltimaModificacion.label("usuario_fechaUltimaModificacion"),
-            _roles.c.id.label("rol_id"),
-            _roles.c.nombre.label("rol_nombre"),
-            _roles.c.fechaAlta.label("rol_fechaAlta"),
-            _roles.c.fechaUltimaModificacion.label("rol_fechaUltimaModificacion"),
-            _status_usuarios.c.id.label("status_id"),
-            _status_usuarios.c.descripcion.label("status_descripcion"),
-            _status_usuarios.c.fechaAlta.label("status_fechaAlta"),
-            _status_usuarios.c.fechaUltimaModificacion.label("status_fechaUltimaModificacion"),
-        )
-        .select_from(
-            _usuarios.outerjoin(_roles, _roles.c.id == _usuarios.c.rolId).outerjoin(_status_usuarios, _status_usuarios.c.id == _usuarios.c.statusId)
-        )
-    )
-
-
-def _build_usuario_from_row(row: dict) -> dict:
-    usuario = {
-        "id": row.get("usuario_id"),
-        "nombre": row.get("usuario_nombre"),
-        "username": row.get("usuario_username"),
-        "apellidoPaterno": row.get("usuario_apellidoPaterno"),
-        "apellidoMaterno": row.get("usuario_apellidoMaterno"),
-        "password": row.get("usuario_password"),
-        "telefono": row.get("usuario_telefono"),
-        "correo": row.get("usuario_correo"),
-        "foto": row.get("usuario_foto"),
-        "rolId": row.get("usuario_rolId"),
-        "statusId": row.get("usuario_statusId"),
-        "fechaAlta": row.get("usuario_fechaAlta"),
-        "fechaUltimaModificacion": row.get("usuario_fechaUltimaModificacion"),
-    }
-
-    rol = {
-        "id": row.get("rol_id"),
-        "nombre": row.get("rol_nombre"),
-        "fechaAlta": row.get("rol_fechaAlta"),
-        "fechaUltimaModificacion": row.get("rol_fechaUltimaModificacion"),
-    }
-    status_usuario = {
-        "id": row.get("status_id"),
-        "descripcion": row.get("status_descripcion"),
-        "fechaAlta": row.get("status_fechaAlta"),
-        "fechaUltimaModificacion": row.get("status_fechaUltimaModificacion"),
-    }
-
-    usuario["rol"] = rol if any(v is not None for v in rol.values()) else None
-    usuario["status"] = status_usuario if any(v is not None for v in status_usuario.values()) else None
-    return _json_safe_value(usuario)
-
-
 def _get_usuario_full(db: Session, usuario_id: int) -> dict | None:
-    stmt = _base_usuario_join_stmt().where(_usuarios.c.id == usuario_id).limit(1)
-    row = db.execute(stmt).mappings().first()
-    if not row:
-        return None
-    return _build_usuario_from_row(dict(row))
+    return UsuariosModel.fetch_by_id(db, usuario_id)
 
 
 @router.post("/login", summary="Login usuario")
-async def users_login(payload: dict, db: Session = Depends(get_db)) -> dict:
+async def users_login(payload: UsuariosLoginSchema, db: Session = Depends(get_db)) -> dict:
     if not payload:
         return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
 
     try:
-        username = payload.get("username")
-        password = payload.get("password")
+        username = payload.username
+        password = payload.password
         if not username or not password:
             return fastapi_response(None, status.HTTP_400_BAD_REQUEST, "TPM-2")
 
-        stmt = select(_usuarios.c.id, _usuarios.c.password, _usuarios.c.statusId).where(_usuarios.c.username == username).limit(1)
-        user = db.execute(stmt).mappings().first()
+        user = UsuariosModel.get_credentials_row(db, username)
         if not user:
             return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4", message="Usuario no encontrado")
 
@@ -138,9 +51,7 @@ async def users_update_password(payload: dict) -> dict:
 
 @router.get("", summary="Listar usuarios")
 async def users_list(db: Session = Depends(get_db)) -> dict:
-    stmt = _base_usuario_join_stmt().where(_usuarios.c.statusId != 3).order_by(_usuarios.c.id)
-    rows = db.execute(stmt).mappings().all()
-    usuarios = [_build_usuario_from_row(dict(row)) for row in rows]
+    usuarios = UsuariosModel.list_active(db)
     return fastapi_response(usuarios, status.HTTP_200_OK, "TPM-3")
 
 
@@ -163,39 +74,22 @@ async def users_create(payload: dict, db: Session = Depends(get_db)) -> dict:
             "statusId": payload.get("statusId"),
         }
 
-        existe_user = db.execute(select(_usuarios.c.id).where(_usuarios.c.username == user_data["username"]).limit(1)).scalar_one_or_none()
+        existe_user = UsuariosModel.exists_username(db, user_data["username"])
         if existe_user:
             return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-5", items=[partial_response("TPM-5", name=user_data["username"])])
 
-        existe_rol = db.execute(select(_roles.c.id).where(_roles.c.id == user_data["rolId"]).limit(1)).scalar_one_or_none()
+        existe_rol = RolesModel.get_one_rol(db, int(user_data["rolId"]))
         if not existe_rol:
             return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(user_data["rolId"]))])
 
-        existe_status = db.execute(select(_status_usuarios.c.id).where(_status_usuarios.c.id == user_data["statusId"]).limit(1)).scalar_one_or_none()
+        existe_status = EstatusUsuariosModel.get_one_status(db, int(user_data["statusId"]))
         if not existe_status:
             return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-4", items=[partial_response("TPM-4", name=str(user_data["statusId"]))])
 
-        now = datetime.utcnow()
-        stmt = (
-            insert(_usuarios)
-            .values(
-                nombre=user_data["nombre"],
-                username=user_data["username"],
-                apellidoPaterno=user_data["apellidoPaterno"],
-                apellidoMaterno=user_data["apellidoMaterno"],
-                password=user_data["password"],
-                telefono=user_data["telefono"],
-                correo=user_data["correo"],
-                foto=user_data["foto"],
-                rolId=user_data["rolId"],
-                statusId=user_data["statusId"],
-                fechaAlta=now,
-                fechaUltimaModificacion=now,
-            )
-            .returning(_usuarios.c.id)
-        )
-        usuario_id = int(db.execute(stmt).scalar_one())
-        db.commit()
+        user_data["fechaAlta"] = datetime.utcnow()
+        user_data["fechaUltimaModificacion"] = datetime.utcnow()
+        created = UsuariosModel.create_user(db, user_data)
+        usuario_id = int(created.id)
 
         usuario_completo = _get_usuario_full(db, usuario_id)
         return fastapi_response(usuario_completo, status.HTTP_201_CREATED, "TPM-1")
