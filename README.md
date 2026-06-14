@@ -125,14 +125,7 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 En **Azure Portal**, configurar en **Configuration > General settings**:
 
 ```bash
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-O en archivo `startup.sh` en la raíz:
-
-```bash
-#!/bin/bash
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
+gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:${PORT} main:app
 ```
 
 #### Opción 2: Archivo `startup.txt`
