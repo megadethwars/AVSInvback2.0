@@ -392,10 +392,20 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
             )
             created_id = int(db.execute(stmt).scalar_one())
 
-            dispositivo.cantidad = diferencia
-            dispositivo.lugarId = int(item.get("LugarId"))
-            dispositivo.fechaUltimaModificacion = now
-            db.add(dispositivo)
+            # Keep movement insert and device stock/location update in the same transaction.
+            update_stmt = (
+                update(DispositivosModel)
+                .where(DispositivosModel.id == int(item.get("dispositivoId")))
+                .values(
+                    cantidad=int(diferencia),
+                    lugarId=int(item.get("LugarId")),
+                    fechaUltimaModificacion=now,
+                )
+            )
+            updated_rows = db.execute(update_stmt).rowcount or 0
+            if int(updated_rows) == 0:
+                raise ValueError(f"No se pudo actualizar invDispositivos id={item.get('dispositivoId')}")
+
             db.commit()
 
             movimiento_completo = _fetch_movimiento_by_id(db, created_id)
