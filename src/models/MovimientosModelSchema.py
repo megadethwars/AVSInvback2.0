@@ -24,6 +24,15 @@ from ..schemas import (
 )
 
 
+class MovimientosProcessRequest(ORMBaseModel):
+    dispositivoId: list[int]
+    usuarioId: int
+    comentarios: str
+    LugarId: int
+    idMovimiento: str
+    tipoMovId: int
+
+
 class MovimientosModel(Base):
     """SQLAlchemy ORM model for table invMovimientos."""
 
@@ -449,6 +458,7 @@ MovimientosSchemaCreate = MovimientosCreate
 MovimientosSchemaUpdate = MovimientosUpdate
 MovimientosSchemaQuery = MovimientosQuery
 MovimientosSchemaSomeFields = MovimientosSomeFields
+MovimientosSchemaProcessRequest = MovimientosProcessRequest
 
 
 __all__ = [
@@ -463,5 +473,7 @@ __all__ = [
     "MovimientosSchemaUpdate",
     "MovimientosSchemaQuery",
     "MovimientosSchemaSomeFields",
+    "MovimientosProcessRequest",
+    "MovimientosSchemaProcessRequest",
     "ORMBaseModel",
 ]

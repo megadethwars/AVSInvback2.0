@@ -1,16 +1,18 @@
 from datetime import datetime
+import logging
 
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...database import get_db
+from ...database import SessionLocal, get_db
 from ...models.DispositivosModel import DispositivosModel
 from ...models.LugaresModel import LugaresModel
-from ...models.MovimientosModelSchema import MovimientosModel, MovimientosSchemaCreate
+from ...models.MovimientosModelSchema import MovimientosModel, MovimientosSchemaCreate, MovimientosSchemaProcessRequest
 from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/movimientos", tags=["Movimientos"])
+logger = logging.getLogger(__name__)
 
 
 def _usuario_exists(db: Session, usuario_id: int) -> bool:
@@ -32,6 +34,71 @@ def _fetch_movimientos_some_fields(
     search_value: str | None = None,
 ) -> tuple[list[dict], int]:
     return MovimientosModel.fetch_some_fields(db, offset, limit, search_value)
+
+
+def _process_movements_job(payload: dict) -> None:
+    db = SessionLocal()
+    try:
+        dispositivo_ids = payload.get("dispositivoId") or []
+        usuario_id = int(payload.get("usuarioId"))
+        comentarios = payload.get("comentarios")
+        lugar_id = int(payload.get("LugarId"))
+        id_movimiento = payload.get("idMovimiento")
+        tipo_mov_id = int(payload.get("tipoMovId"))
+
+        for dispositivo_id in dispositivo_ids:
+            dispositivo = DispositivosModel.get_one_device(db, int(dispositivo_id))
+            if not dispositivo:
+                continue
+
+            cantidad_actual = 1
+            diferencia = dispositivo.cantidad or 0
+            if tipo_mov_id == 1:
+                diferencia = (dispositivo.cantidad or 0) - cantidad_actual
+            elif tipo_mov_id == 2:
+                diferencia = (dispositivo.cantidad or 0) + cantidad_actual
+
+            if diferencia < 0:
+                continue
+
+            if tipo_mov_id == 2 and lugar_id == 1 and int(dispositivo.lugarId or 0) == 1:
+                continue
+
+            now = datetime.utcnow()
+            movimiento_data = {
+                "idMovimiento": id_movimiento,
+                "dispositivoId": int(dispositivo_id),
+                "usuarioId": usuario_id,
+                "tipoMovId": tipo_mov_id,
+                "LugarId": lugar_id,
+                "comentarios": comentarios,
+                "fechaAlta": now,
+                "fechaUltimaModificacion": now,
+                "cantidad_Actual": cantidad_actual,
+            }
+
+            try:
+                movimiento_obj = MovimientosModel(movimiento_data)
+                db.add(movimiento_obj)
+
+                dispositivo.cantidad = int(diferencia)
+                dispositivo.lugarId = lugar_id
+                dispositivo.fechaUltimaModificacion = now
+                db.add(dispositivo)
+
+                db.commit()
+            except Exception as err:
+                db.rollback()
+                logger.exception(
+                    "Error procesando movimiento masivo para dispositivoId=%s, usuarioId=%s, lugarId=%s, tipoMovId=%s",
+                    dispositivo_id,
+                    usuario_id,
+                    lugar_id,
+                    tipo_mov_id,
+                )
+                continue
+    finally:
+        db.close()
 
 
 @router.get("", summary="Listar movimientos")
@@ -158,6 +225,37 @@ async def movimientos_create(payload: dict, db: Session = Depends(get_db)) -> di
         return fastapi_response(lista_objetos_creados, status.HTTP_201_CREATED, "TPM-16", items=lista_errores)
 
     return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-16", items=lista_errores)
+
+
+@router.post("/processMovements", summary="Procesar multiples movimientos")
+async def process_movements(
+    payload: MovimientosSchemaProcessRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> dict:
+    data = payload.model_dump(exclude_none=True)
+    dispositivo_ids = data.get("dispositivoId") or []
+
+    if len(dispositivo_ids) == 0:
+        return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-21")
+
+    if not _usuario_exists(db, int(data.get("usuarioId"))):
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4", message="el usuario no existe")
+
+    lugar = LugaresModel.get_one_lugar(db, int(data.get("LugarId")))
+    if not lugar:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4", message="el lugar no existe")
+
+    if not _tipo_mov_exists(db, int(data.get("tipoMovId"))):
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4", message="el tipo de movimiento no existe")
+
+    background_tasks.add_task(_process_movements_job, data)
+    return fastapi_response(
+        {"requested_devices": len(dispositivo_ids)},
+        status.HTTP_201_CREATED,
+        "TPM-8",
+        message="Proceso de movimientos generado correctamente",
+    )
 
 
 @router.put("", summary="Actualizar movimiento")
