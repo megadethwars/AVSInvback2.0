@@ -179,7 +179,7 @@ async def dispositivos_filterdevice(
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
-@router.get("/filterdeviceFields", summary="Filtrar dispositivos campos")
+@router.get("/filterdeviceFields", summary="Filtrar dispositivos campos- PRINCIPAL QUERY")
 @router.post("/filterdeviceFields", summary="Filtrar dispositivos campos")
 async def dispositivos_filterdevice_fields(
     offset: int = 0,
@@ -240,7 +240,7 @@ async def dispositivos_filter_by_codigo(
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3")
 
 
-@router.get("/alldeviceSomeFields", summary="Listar dispositivos campos seleccionados")
+@router.get("/alldeviceSomeFields", summary="Listar todos dispositivos campos seleccionados")
 async def dispositivos_some_fields(
     offset: int = 0,
     limit: int = 100,

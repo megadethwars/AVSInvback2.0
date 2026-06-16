@@ -12,7 +12,7 @@ from ...models.MovimientosModelSchema import MovimientosModel, MovimientosSchema
 from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/movimientos", tags=["Movimientos"])
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 def _usuario_exists(db: Session, usuario_id: int) -> bool:
@@ -37,6 +37,7 @@ def _fetch_movimientos_some_fields(
 
 
 def _process_movements_job(payload: dict) -> None:
+    logger.debug("[MOV-BG] Iniciando proceso de movimientos masivo")
     db = SessionLocal()
     try:
         dispositivo_ids = payload.get("dispositivoId") or []
@@ -45,6 +46,14 @@ def _process_movements_job(payload: dict) -> None:
         lugar_id = int(payload.get("LugarId"))
         id_movimiento = payload.get("idMovimiento")
         tipo_mov_id = int(payload.get("tipoMovId"))
+
+        logger.info(
+            "[MOV-BG] payload valido: total_dispositivos=%s usuarioId=%s lugarId=%s tipoMovId=%s",
+            len(dispositivo_ids),
+            usuario_id,
+            lugar_id,
+            tipo_mov_id,
+        )
 
         for dispositivo_id in dispositivo_ids:
             dispositivo = DispositivosModel.get_one_device(db, int(dispositivo_id))
@@ -87,6 +96,13 @@ def _process_movements_job(payload: dict) -> None:
                 db.add(dispositivo)
 
                 db.commit()
+                logger.info(
+                    "[MOV-BG] Movimiento procesado con exito: dispositivoId=%s usuarioId=%s lugarId=%s tipoMovId=%s",
+                    dispositivo_id,
+                    usuario_id,
+                    lugar_id,
+                    tipo_mov_id,
+                )
             except Exception as err:
                 db.rollback()
                 logger.exception(
@@ -99,6 +115,7 @@ def _process_movements_job(payload: dict) -> None:
                 continue
     finally:
         db.close()
+        logger.debug("[MOV-BG] Proceso de movimientos masivo finalizado")
 
 
 @router.get("", summary="Listar movimientos")
@@ -236,6 +253,8 @@ async def process_movements(
     data = payload.model_dump(exclude_none=True)
     dispositivo_ids = data.get("dispositivoId") or []
 
+    logger.info("[MOV-API] Solicitud processMovements recibida: total_dispositivos=%s", len(dispositivo_ids))
+
     if len(dispositivo_ids) == 0:
         return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-21")
 
@@ -249,6 +268,18 @@ async def process_movements(
     if not _tipo_mov_exists(db, int(data.get("tipoMovId"))):
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4", message="el tipo de movimiento no existe")
 
+    tipo_mov_id = int(data.get("tipoMovId"))
+    lugar_id = int(data.get("LugarId"))
+
+    # Regla: salida (1) no puede tener almacen (LugarId=1).
+    if tipo_mov_id == 1 and lugar_id == 1:
+        return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-22")
+
+    # Regla: entrada (2) solo puede entrar a almacen (LugarId=1).
+    if tipo_mov_id == 2 and lugar_id != 1:
+        return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-23")
+
+    logger.info("[MOV-API] Encolando background task _process_movements_job")
     background_tasks.add_task(_process_movements_job, data)
     return fastapi_response(
         {"requested_devices": len(dispositivo_ids)},

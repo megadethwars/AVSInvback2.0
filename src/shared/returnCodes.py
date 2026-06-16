@@ -23,7 +23,9 @@ app_codes = {
     "TPM-18":"Acceso autorizado",
     "TPM-19":"Usuario dado de baja, error en inicio de sesion",
     "TPM-20":"el producto ya esta en almacen",
-    "TPM-21":"los datos de entrada no son validos, no hay suficiente informacion"
+    "TPM-21":"los datos de entrada no son validos, no hay suficiente informacion",
+    "TPM-22":"si el movimiento es de salida, el lugar no puede ser el almacen",
+    "TPM-23":"si el movimiento es de entrada, el lugar no puede ser el distinto al almacen",
 }
 
 def partial_response(app_code,message="",name="",id=0):
