@@ -86,32 +86,44 @@ def _process_movements_job(payload: dict) -> None:
                 "cantidad_Actual": cantidad_actual,
             }
 
-            try:
-                movimiento_obj = MovimientosModel(movimiento_data)
-                db.add(movimiento_obj)
+            max_reintentos = 3
+            procesado = False
+            for intento in range(1, max_reintentos + 1):
+                try:
+                    movimiento_obj = MovimientosModel(movimiento_data)
+                    db.add(movimiento_obj)
 
-                dispositivo.cantidad = int(diferencia)
-                dispositivo.lugarId = lugar_id
-                dispositivo.fechaUltimaModificacion = now
-                db.add(dispositivo)
+                    dispositivo.cantidad = int(diferencia)
+                    dispositivo.lugarId = lugar_id
+                    dispositivo.fechaUltimaModificacion = now
+                    db.add(dispositivo)
 
-                db.commit()
-                logger.info(
-                    "[MOV-BG] Movimiento procesado con exito: dispositivoId=%s usuarioId=%s lugarId=%s tipoMovId=%s",
-                    dispositivo_id,
-                    usuario_id,
-                    lugar_id,
-                    tipo_mov_id,
-                )
-            except Exception as err:
-                db.rollback()
-                logger.exception(
-                    "Error procesando movimiento masivo para dispositivoId=%s, usuarioId=%s, lugarId=%s, tipoMovId=%s",
-                    dispositivo_id,
-                    usuario_id,
-                    lugar_id,
-                    tipo_mov_id,
-                )
+                    db.commit()
+                    procesado = True
+                    logger.info(
+                        "[MOV-BG] Movimiento procesado con exito: dispositivoId=%s usuarioId=%s lugarId=%s tipoMovId=%s intento=%s",
+                        dispositivo_id,
+                        usuario_id,
+                        lugar_id,
+                        tipo_mov_id,
+                        intento,
+                    )
+                    break
+                except Exception as err:
+                    db.rollback()
+                    logger.exception(
+                        "Error procesando movimiento masivo para dispositivoId=%s, usuarioId=%s, lugarId=%s, tipoMovId=%s intento=%s/%s",
+                        dispositivo_id,
+                        usuario_id,
+                        lugar_id,
+                        tipo_mov_id,
+                        intento,
+                        max_reintentos,
+                    )
+                    if intento < max_reintentos:
+                        db.expire_all()
+
+            if not procesado:
                 continue
     finally:
         db.close()
