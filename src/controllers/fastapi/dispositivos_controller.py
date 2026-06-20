@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Body, Depends, Header, status
 from sqlalchemy.orm import Session
+import logging
 
+from src.schemas import DispositivosBase
 from ...database import get_db
 from ...models.DispositivosModelSchema import (
     DispositivosModel,
@@ -14,8 +16,10 @@ from ...models.LugaresModel import LugaresModel
 from ...models.StatusDevicesModel import StatusDevicesModel
 from ...shared.returnCodes import fastapi_response, partial_response
 
-router = APIRouter(prefix="/api/v1/dispositivos", tags=["Dispositivos"])
 
+
+router = APIRouter(prefix="/api/v1/dispositivos", tags=["Dispositivos"])
+logger = logging.getLogger("uvicorn.error")
 @router.get("", summary="Listar dispositivos")
 async def get_dispositivos(
     offset: int = 0,
@@ -173,6 +177,7 @@ async def dispositivos_filterdevice(
     value = str(payload.get("value") or "").strip()
     rows = DispositivosModel.search_by_multiple_fields(db, value, offset, limit)
     if not rows:
+        logger.error(f"No devices found with value: '{value}'")
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
     serialized = [DispositivosBase.model_validate(item).model_dump(mode="json") for item in rows]
@@ -232,8 +237,10 @@ async def dispositivos_filter_by_codigo(
     value: str = Header(default="", alias="value"),
     db: Session = Depends(get_db),
 ) -> dict:
+    logger.info(f"Received filter by codigo request with value: '{value}'")
     row = DispositivosModel.get_devices_by_codigo(db, value)
     if not row:
+        logger.error(f"No device found with codigo: '{value}'")
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
 
     serialized = DispositivosSchema.model_validate(row).model_dump(mode="json")
@@ -265,6 +272,7 @@ async def dispositivos_get_amount(db: Session = Depends(get_db)) -> dict:
 
 @router.get("/{dispositivo_id}", summary="Obtener dispositivo por ID")
 async def get_dispositivo(dispositivo_id: int, db: Session = Depends(get_db)) -> dict:
+    logger.info(f"Received request for device with ID: {dispositivo_id}")
     row = DispositivosModel.get_one_device(db, dispositivo_id)
     if not row:
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
