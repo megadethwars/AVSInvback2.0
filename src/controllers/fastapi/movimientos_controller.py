@@ -115,7 +115,9 @@ def _process_movements_job(payload: dict) -> None:
                 continue
     finally:
         db.close()
-        logger.debug("[MOV-BG] Proceso de movimientos masivo finalizado")
+        logger.debug("[MOV-BG] Proceso de movimientos masivo finalizado, Conexion a DB cerrada")
+
+    logger.debug("[MOV-BG] Proceso de movimientos masivo finalizado")
 
 
 @router.get("", summary="Listar movimientos")
