@@ -284,7 +284,7 @@ async def process_movements(
     logger.info("[MOV-API] Encolando background task _process_movements_job")
     background_tasks.add_task(_process_movements_job, data)
     return fastapi_response(
-        {"requested_devices": len(dispositivo_ids)},
+        {"requested_devices": len(dispositivo_ids),"idMovimiento": data.get("idMovimiento")},
         status.HTTP_201_CREATED,
         "TPM-8",
         message="Proceso de movimientos generado correctamente",
