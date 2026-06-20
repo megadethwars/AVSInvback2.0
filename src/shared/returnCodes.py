@@ -26,6 +26,8 @@ app_codes = {
     "TPM-21":"los datos de entrada no son validos, no hay suficiente informacion",
     "TPM-22":"si el movimiento es de salida, el lugar no puede ser el almacen",
     "TPM-23":"si el movimiento es de entrada, el lugar no puede ser el distinto al almacen",
+    "TPM-24":"al menos un dispositivo del job pasado esta en proceso y aun no ha terminado",
+    "TPM-25":"No se pudo agregar el nuevo job task",
 }
 
 def partial_response(app_code,message="",name="",id=0):

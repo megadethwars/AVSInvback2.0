@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from threading import Lock
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, status
 from sqlalchemy import select
@@ -13,6 +14,8 @@ from ...shared.returnCodes import fastapi_response, partial_response
 
 router = APIRouter(prefix="/api/v1/movimientos", tags=["Movimientos"])
 logger = logging.getLogger("uvicorn.error")
+_active_movement_devices: set[int] = set()
+_active_movement_devices_lock = Lock()
 
 
 def _usuario_exists(db: Session, usuario_id: int) -> bool:
@@ -36,11 +39,27 @@ def _fetch_movimientos_some_fields(
     return MovimientosModel.fetch_some_fields(db, offset, limit, search_value)
 
 
+def _claim_movement_devices(dispositivo_ids: list[int]) -> list[int]:
+    with _active_movement_devices_lock:
+        overlapping_ids = sorted(device_id for device_id in set(dispositivo_ids) if device_id in _active_movement_devices)
+        if overlapping_ids:
+            return overlapping_ids
+
+        _active_movement_devices.update(dispositivo_ids)
+        return []
+
+
+def _release_movement_devices(dispositivo_ids: list[int]) -> None:
+    with _active_movement_devices_lock:
+        for device_id in set(dispositivo_ids):
+            _active_movement_devices.discard(device_id)
+
+
 def _process_movements_job(payload: dict) -> None:
     logger.debug("[MOV-BG] Iniciando proceso de movimientos masivo")
     db = SessionLocal()
+    dispositivo_ids = [int(dispositivo_id) for dispositivo_id in (payload.get("dispositivoId") or [])]
     try:
-        dispositivo_ids = payload.get("dispositivoId") or []
         usuario_id = int(payload.get("usuarioId"))
         comentarios = payload.get("comentarios")
         lugar_id = int(payload.get("LugarId"))
@@ -126,10 +145,11 @@ def _process_movements_job(payload: dict) -> None:
             if not procesado:
                 continue
     finally:
+        _release_movement_devices(dispositivo_ids)
         db.close()
-        logger.debug("[MOV-BG] Proceso de movimientos masivo finalizado, Conexion a DB cerrada")
+        logger.info("[MOV-BG] Proceso de movimientos masivo finalizado, Conexion a DB cerrada")
 
-    logger.debug("[MOV-BG] Proceso de movimientos masivo finalizado")
+    logger.info("[MOV-BG] Proceso de movimientos masivo finalizado")
 
 
 @router.get("", summary="Listar movimientos")
@@ -265,7 +285,8 @@ async def process_movements(
     db: Session = Depends(get_db),
 ) -> dict:
     data = payload.model_dump(exclude_none=True)
-    dispositivo_ids = data.get("dispositivoId") or []
+    dispositivo_ids = [int(dispositivo_id) for dispositivo_id in (data.get("dispositivoId") or [])]
+    data["dispositivoId"] = dispositivo_ids
 
     logger.info("[MOV-API] Solicitud processMovements recibida: total_dispositivos=%s", len(dispositivo_ids))
 
@@ -293,8 +314,34 @@ async def process_movements(
     if tipo_mov_id == 2 and lugar_id != 1:
         return fastapi_response(None, status.HTTP_409_CONFLICT, "TPM-23")
 
+    overlapping_ids = _claim_movement_devices(dispositivo_ids)
+    if overlapping_ids:
+        logger.warning(
+            "[MOV-API] Conflicto processMovements: dispositivos en proceso=%s",
+            overlapping_ids,
+        )
+        return fastapi_response(
+            None,
+            status.HTTP_409_CONFLICT,
+            "TPM-24",
+            message="al menos un dispositivo del job pasado esta en proceso y aun no ha terminado",
+            items=[partial_response("TPM-24", name=",".join(str(device_id) for device_id in overlapping_ids))],
+        )
+
     logger.info("[MOV-API] Encolando background task _process_movements_job")
-    background_tasks.add_task(_process_movements_job, data)
+    try:
+        background_tasks.add_task(_process_movements_job, data)
+    except Exception as err:
+        _release_movement_devices(dispositivo_ids)
+        logger.exception("[MOV-API] No se pudo agregar el nuevo job task: idMovimiento=%s", data.get("idMovimiento"))
+        return fastapi_response(
+            None,
+            status.HTTP_409_CONFLICT,
+            "TPM-25",
+            message="No se pudo agregar el nuevo job task",
+            items=[partial_response("TPM-25", message=str(err), name=str(data.get("idMovimiento") or ""))],
+        )
+
     return fastapi_response(
         {"requested_devices": len(dispositivo_ids),"idMovimiento": data.get("idMovimiento")},
         status.HTTP_201_CREATED,
