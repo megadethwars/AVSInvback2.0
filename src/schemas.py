@@ -327,3 +327,27 @@ class MovimientosSomeFields(ORMBaseModel):
     tipo: Optional[str] = Field(default=None, max_length=100)
     nombre: Optional[str] = Field(default=None, max_length=100)
     username: Optional[str] = Field(default=None, max_length=100)
+
+
+class JobMovimientosBase(ORMBaseModel):
+    id: Optional[int] = None
+    idMovimiento: Optional[str] = None
+    usuarioId: Optional[int] = None
+    tipoMovId: Optional[int] = None
+    LugarId: Optional[int] = None
+    comentarios: Optional[str] = None
+    estado: Optional[str] = None
+    status: Optional[int] = None
+    fechaAlta: Optional[datetime] = None
+    fechaUltimaModificacion: Optional[datetime] = None
+
+
+class JobMovimientosCreate(JobMovimientosBase):
+    usuarioId: int
+    tipoMovId: int
+    LugarId: int
+    status: int
+
+
+class JobMovimientosUpdate(JobMovimientosBase):
+    id: int

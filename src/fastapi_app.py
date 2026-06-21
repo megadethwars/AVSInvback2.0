@@ -14,6 +14,7 @@ from .controllers.fastapi import (
     estatususuarios_router,
     tipomovimientos_router,
     reportes_router,
+    jobmovimientos_router,
 )
 
 
@@ -64,6 +65,7 @@ def create_app(env_name: str = "local") -> FastAPI:
     app.include_router(estatususuarios_router)
     app.include_router(tipomovimientos_router)
     app.include_router(reportes_router)
+    app.include_router(jobmovimientos_router)
 
     return app
 

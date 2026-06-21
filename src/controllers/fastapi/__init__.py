@@ -8,6 +8,7 @@ from .statuslugar_controller import router as statuslugar_router
 from .estatususuarios_controller import router as estatususuarios_router
 from .tipomovimientos_controller import router as tipomovimientos_router
 from .reportes_controller import router as reportes_router
+from .jobmovimientos_controller import router as jobmovimientos_router
 
 __all__ = [
     "lugares_router",
@@ -20,4 +21,5 @@ __all__ = [
     "estatususuarios_router",
     "tipomovimientos_router",
     "reportes_router",
+    "jobmovimientos_router",
 ]

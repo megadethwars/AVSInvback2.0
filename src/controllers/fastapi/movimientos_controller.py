@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from threading import Lock
 
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ...database import SessionLocal, get_db
 from ...models.DispositivosModel import DispositivosModel
+from ...models.JobMovimientosModelSchema import JobMovimientosModel
 from ...models.LugaresModel import LugaresModel
 from ...models.MovimientosModelSchema import MovimientosModel, MovimientosSchemaCreate, MovimientosSchemaProcessRequest
 from ...shared.returnCodes import fastapi_response, partial_response
@@ -16,6 +17,9 @@ router = APIRouter(prefix="/api/v1/movimientos", tags=["Movimientos"])
 logger = logging.getLogger("uvicorn.error")
 _active_movement_devices: set[int] = set()
 _active_movement_devices_lock = Lock()
+_movement_jobs_status: dict[str, dict] = {}
+_movement_jobs_status_lock = Lock()
+_MOVEMENT_JOB_STATUS_TTL = timedelta(days=1)
 
 
 def _usuario_exists(db: Session, usuario_id: int) -> bool:
@@ -55,15 +59,142 @@ def _release_movement_devices(dispositivo_ids: list[int]) -> None:
             _active_movement_devices.discard(device_id)
 
 
+def _create_job_status(id_movimiento: str, dispositivo_ids: list[int]) -> None:
+    with _movement_jobs_status_lock:
+        _movement_jobs_status[id_movimiento] = {
+            "idMovimiento": id_movimiento,
+            "status": "queued",
+            "requested_devices": len(dispositivo_ids),
+            "processed_devices": [],
+            "failed_devices": [],
+            "skipped_devices": [],
+            "started_at": datetime.utcnow().isoformat(),
+            "finished_at": None,
+            "expires_at": None,
+            "last_error": None,
+        }
+
+
+def _cleanup_expired_job_statuses() -> None:
+    now = datetime.utcnow()
+    with _movement_jobs_status_lock:
+        expired_job_ids = [
+            job_id
+            for job_id, job_status in _movement_jobs_status.items()
+            if job_status.get("expires_at") and datetime.fromisoformat(job_status["expires_at"]) <= now
+        ]
+
+        for job_id in expired_job_ids:
+            _movement_jobs_status.pop(job_id, None)
+
+
+def _update_job_status(id_movimiento: str, **updates) -> None:
+    with _movement_jobs_status_lock:
+        job_status = _movement_jobs_status.get(id_movimiento)
+        if not job_status:
+            return
+        job_status.update(updates)
+
+
+def _append_job_status_device(id_movimiento: str, key: str, dispositivo_id: int) -> None:
+    with _movement_jobs_status_lock:
+        job_status = _movement_jobs_status.get(id_movimiento)
+        if not job_status:
+            return
+        bucket = job_status.setdefault(key, [])
+        if dispositivo_id not in bucket:
+            bucket.append(dispositivo_id)
+
+
+def _get_job_status(id_movimiento: str) -> dict | None:
+    _cleanup_expired_job_statuses()
+    with _movement_jobs_status_lock:
+        job_status = _movement_jobs_status.get(id_movimiento)
+        if not job_status:
+            return None
+
+        return {
+            "idMovimiento": job_status.get("idMovimiento"),
+            "status": job_status.get("status"),
+            "requested_devices": job_status.get("requested_devices"),
+            "processed_devices": list(job_status.get("processed_devices", [])),
+            "failed_devices": list(job_status.get("failed_devices", [])),
+            "skipped_devices": list(job_status.get("skipped_devices", [])),
+            "started_at": job_status.get("started_at"),
+            "finished_at": job_status.get("finished_at"),
+            "expires_at": job_status.get("expires_at"),
+            "last_error": job_status.get("last_error"),
+        }
+
+
+def _finalize_job_status(id_movimiento: str, status_value: str, last_error: str | None = None) -> None:
+    finished_at = datetime.utcnow()
+    _update_job_status(
+        id_movimiento,
+        status=status_value,
+        finished_at=finished_at.isoformat(),
+        expires_at=(finished_at + _MOVEMENT_JOB_STATUS_TTL).isoformat(),
+        last_error=last_error,
+    )
+
+
+def _create_job_db_record(payload: dict) -> None:
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        JobMovimientosModel.create_job(
+            db,
+            {
+                "idMovimiento": str(payload.get("idMovimiento")),
+                "usuarioId": int(payload.get("usuarioId")),
+                "tipoMovId": int(payload.get("tipoMovId")),
+                "LugarId": int(payload.get("LugarId")),
+                "comentarios": payload.get("comentarios"),
+                "estado": "job iniciado y en proceso",
+                "status": 1,
+                "fechaAlta": now,
+                "fechaUltimaModificacion": now,
+            },
+        )
+    except Exception:
+        logger.exception("[MOV-API] No se pudo crear registro en invJobMovimientos para idMovimiento=%s", payload.get("idMovimiento"))
+    finally:
+        db.close()
+
+
+def _set_job_db_status(id_movimiento: str, status_code: int, estado: str, error_message: str | None = None) -> None:
+    db = SessionLocal()
+    try:
+        row = JobMovimientosModel.get_latest_by_id_movimiento(db, id_movimiento)
+        if not row:
+            return
+
+        update_data = {
+            "status": int(status_code),
+            "estado": estado,
+            "fechaUltimaModificacion": datetime.utcnow(),
+        }
+        if error_message:
+            update_data["comentarios"] = f"{row.comentarios or ''} | error: {error_message}".strip(" |")
+
+        row.update(db, update_data)
+    except Exception:
+        logger.exception("[MOV-BG] No se pudo actualizar invJobMovimientos para idMovimiento=%s", id_movimiento)
+    finally:
+        db.close()
+
+
 def _process_movements_job(payload: dict) -> None:
     logger.debug("[MOV-BG] Iniciando proceso de movimientos masivo")
     db = SessionLocal()
     dispositivo_ids = [int(dispositivo_id) for dispositivo_id in (payload.get("dispositivoId") or [])]
+    id_movimiento = str(payload.get("idMovimiento"))
     try:
+        _update_job_status(id_movimiento, status="processing")
+        _set_job_db_status(id_movimiento, 1, "job en proceso")
         usuario_id = int(payload.get("usuarioId"))
         comentarios = payload.get("comentarios")
         lugar_id = int(payload.get("LugarId"))
-        id_movimiento = payload.get("idMovimiento")
         tipo_mov_id = int(payload.get("tipoMovId"))
 
         logger.info(
@@ -77,6 +208,7 @@ def _process_movements_job(payload: dict) -> None:
         for dispositivo_id in dispositivo_ids:
             dispositivo = DispositivosModel.get_one_device(db, int(dispositivo_id))
             if not dispositivo:
+                _append_job_status_device(id_movimiento, "skipped_devices", int(dispositivo_id))
                 continue
 
             cantidad_actual = 1
@@ -87,9 +219,11 @@ def _process_movements_job(payload: dict) -> None:
                 diferencia = (dispositivo.cantidad or 0) + cantidad_actual
 
             if diferencia < 0:
+                _append_job_status_device(id_movimiento, "failed_devices", int(dispositivo_id))
                 continue
 
             if tipo_mov_id == 2 and lugar_id == 1 and int(dispositivo.lugarId or 0) == 1:
+                _append_job_status_device(id_movimiento, "skipped_devices", int(dispositivo_id))
                 continue
 
             now = datetime.utcnow()
@@ -127,9 +261,11 @@ def _process_movements_job(payload: dict) -> None:
                         tipo_mov_id,
                         intento,
                     )
+                    _append_job_status_device(id_movimiento, "processed_devices", int(dispositivo_id))
                     break
                 except Exception as err:
                     db.rollback()
+                    _update_job_status(id_movimiento, last_error=str(err))
                     logger.exception(
                         "Error procesando movimiento masivo para dispositivoId=%s, usuarioId=%s, lugarId=%s, tipoMovId=%s intento=%s/%s",
                         dispositivo_id,
@@ -143,8 +279,25 @@ def _process_movements_job(payload: dict) -> None:
                         db.expire_all()
 
             if not procesado:
+                _append_job_status_device(id_movimiento, "failed_devices", int(dispositivo_id))
                 continue
+    except Exception as err:
+        _finalize_job_status(id_movimiento, "failed", str(err))
+        _set_job_db_status(id_movimiento, 2, "job con fallo", str(err))
+        logger.exception("[MOV-BG] Error general procesando job idMovimiento=%s", id_movimiento)
     finally:
+        job_status = _get_job_status(id_movimiento)
+        if job_status and job_status.get("status") != "failed":
+            final_status = "completed"
+            final_status_code = 3
+            final_status_message = "job terminado exitosamente"
+            if job_status.get("failed_devices") or job_status.get("skipped_devices"):
+                final_status = "completed_with_errors"
+                final_status_code = 2
+                final_status_message = "job terminado con errores"
+            _finalize_job_status(id_movimiento, final_status, job_status.get("last_error"))
+            _set_job_db_status(id_movimiento, final_status_code, final_status_message, job_status.get("last_error"))
+
         _release_movement_devices(dispositivo_ids)
         db.close()
         logger.info("[MOV-BG] Proceso de movimientos masivo finalizado, Conexion a DB cerrada")
@@ -284,8 +437,11 @@ async def process_movements(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> dict:
+    _cleanup_expired_job_statuses()
+
     data = payload.model_dump(exclude_none=True)
     dispositivo_ids = [int(dispositivo_id) for dispositivo_id in (data.get("dispositivoId") or [])]
+    id_movimiento = str(data.get("idMovimiento"))
     data["dispositivoId"] = dispositivo_ids
 
     logger.info("[MOV-API] Solicitud processMovements recibida: total_dispositivos=%s", len(dispositivo_ids))
@@ -328,11 +484,15 @@ async def process_movements(
             items=[partial_response("TPM-24", name=",".join(str(device_id) for device_id in overlapping_ids))],
         )
 
+    _create_job_status(id_movimiento, dispositivo_ids)
+    _create_job_db_record(data)
     logger.info("[MOV-API] Encolando background task _process_movements_job")
     try:
         background_tasks.add_task(_process_movements_job, data)
     except Exception as err:
         _release_movement_devices(dispositivo_ids)
+        _finalize_job_status(id_movimiento, "enqueue_failed", str(err))
+        _set_job_db_status(id_movimiento, 2, "no se pudo encolar el job", str(err))
         logger.exception("[MOV-API] No se pudo agregar el nuevo job task: idMovimiento=%s", data.get("idMovimiento"))
         return fastapi_response(
             None,
@@ -348,6 +508,23 @@ async def process_movements(
         "TPM-8",
         message="Proceso de movimientos generado correctamente",
     )
+
+
+@router.get("/processMovements/status/{id_movimiento}", summary="Consultar estado de job processMovements")
+async def process_movements_status(id_movimiento: str, db: Session = Depends(get_db)) -> dict:
+    job_status = _get_job_status(id_movimiento)
+    db_job_status = JobMovimientosModel.get_latest_by_id_movimiento(db, id_movimiento)
+
+    if not job_status and not db_job_status:
+        return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4", message="job no encontrado")
+
+    if not job_status and db_job_status:
+        return fastapi_response(JobMovimientosModel.to_dict(db_job_status), status.HTTP_200_OK, "TPM-3")
+
+    if db_job_status:
+        job_status["jobDb"] = JobMovimientosModel.to_dict(db_job_status)
+
+    return fastapi_response(job_status, status.HTTP_200_OK, "TPM-3")
 
 
 @router.put("", summary="Actualizar movimiento")
