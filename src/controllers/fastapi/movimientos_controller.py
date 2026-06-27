@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import logging
+import os
 from threading import Lock
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, status
@@ -20,6 +21,7 @@ _active_movement_devices_lock = Lock()
 _movement_jobs_status: dict[str, dict] = {}
 _movement_jobs_status_lock = Lock()
 _MOVEMENT_JOB_STATUS_TTL = timedelta(days=1)
+_MOVEMENT_JOB_STATUS_MAX_ENTRIES = int(os.getenv("MOVEMENT_JOB_STATUS_MAX_ENTRIES", "500"))
 
 
 def _usuario_exists(db: Session, usuario_id: int) -> bool:
@@ -60,7 +62,16 @@ def _release_movement_devices(dispositivo_ids: list[int]) -> None:
 
 
 def _create_job_status(id_movimiento: str, dispositivo_ids: list[int]) -> None:
+    _cleanup_expired_job_statuses()
     with _movement_jobs_status_lock:
+        # Keep a bounded in-memory cache to avoid unbounded growth in long-lived workers.
+        while len(_movement_jobs_status) >= _MOVEMENT_JOB_STATUS_MAX_ENTRIES:
+            oldest_job_id = min(
+                _movement_jobs_status,
+                key=lambda job_id: _movement_jobs_status[job_id].get("started_at", ""),
+            )
+            _movement_jobs_status.pop(oldest_job_id, None)
+
         _movement_jobs_status[id_movimiento] = {
             "idMovimiento": id_movimiento,
             "status": "queued",
