@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import os
 
 from .database import init_db
 from .controllers.fastapi import (
@@ -20,6 +21,7 @@ from .controllers.fastapi import (
 
 def create_app(env_name: str = "local") -> FastAPI:
     logger = logging.getLogger("uvicorn.error")
+    enable_db_init = os.getenv("ENABLE_DB_INIT", "false").strip().lower() in {"1", "true", "yes", "on"}
 
     app = FastAPI(
         title="Inventory API",
@@ -43,12 +45,14 @@ def create_app(env_name: str = "local") -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Initialize database on startup
+    # Initialize database on startup only when explicitly enabled.
     @app.on_event("startup")
     async def startup_event():
-        """Initialize database tables on startup"""
-        init_db()
-        logger.info("Database initialized")
+        if enable_db_init:
+            init_db()
+            logger.info("Database initialized")
+        else:
+            logger.info("Database initialization skipped")
 
     @app.get("/health", tags=["System"], summary="Health Check")
     async def health() -> dict[str, str]:

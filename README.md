@@ -360,6 +360,8 @@ Para importar en herramientas como Postman, Insomnia, etc.
 
 3. **Variables de entorno en Azure**:
    - `SQLALCHEMY_DATABASE_URI=mssql+pymssql://...`
+   - `ENABLE_DB_INIT=false`  
+     Mantenerlo en `false` en App Service para evitar que el arranque haga `create_all()`.
    - Otras variables del `.env` local
 
 4. **Deploy**:
