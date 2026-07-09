@@ -1,9 +1,11 @@
 """Dispositivos model/schema aggregation for FastAPI controllers."""
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from .DispositivosModel import DispositivosModel
+from .LugaresModel import LugaresModel
+from .StatusDevicesModel import StatusDevicesModel
 from ..schemas import (
     DispositivosBase,
     DispositivosCantity,
@@ -71,28 +73,46 @@ class DispositivosModelSchema:
         in_storage: int = 0,
         minimal: bool = False,
     ) -> tuple[list[dict], int]:
-        base_query = select(DispositivosModel)
-        count_query = select(func.count()).select_from(DispositivosModel)
+        base_query = (
+            select(DispositivosModel)
+            .join(LugaresModel, DispositivosModel.lugarId == LugaresModel.id, isouter=True)
+            .join(StatusDevicesModel, DispositivosModel.statusId == StatusDevicesModel.id, isouter=True)
+        )
+        count_query = (
+            select(func.count(func.distinct(DispositivosModel.id)))
+            .select_from(DispositivosModel)
+            .join(LugaresModel, DispositivosModel.lugarId == LugaresModel.id, isouter=True)
+            .join(StatusDevicesModel, DispositivosModel.statusId == StatusDevicesModel.id, isouter=True)
+        )
 
         if search_value:
-            pattern = f"%{search_value}%"
-            if minimal:
-                filters = or_(
+            normalized_value = search_value.strip()
+            terms = [term for term in normalized_value.split() if term]
+            if not terms:
+                terms = [normalized_value]
+
+            term_filters = []
+            for term in terms:
+                pattern = f"%{term}%"
+                searchable_fields = [
                     DispositivosModel.codigo.ilike(pattern),
                     DispositivosModel.producto.ilike(pattern),
                     DispositivosModel.marca.ilike(pattern),
                     DispositivosModel.modelo.ilike(pattern),
                     DispositivosModel.serie.ilike(pattern),
-                )
-            else:
-                filters = or_(
-                    DispositivosModel.codigo.ilike(pattern),
-                    DispositivosModel.producto.ilike(pattern),
-                    DispositivosModel.marca.ilike(pattern),
-                    DispositivosModel.modelo.ilike(pattern),
-                    DispositivosModel.serie.ilike(pattern),
-                    DispositivosModel.accesorios.ilike(pattern),
-                )
+                    LugaresModel.lugar.ilike(pattern),
+                    StatusDevicesModel.descripcion.ilike(pattern),
+                ]
+
+                if not minimal:
+                    searchable_fields.append(DispositivosModel.accesorios.ilike(pattern))
+
+                if term.isdigit():
+                    searchable_fields.append(DispositivosModel.id == int(term))
+
+                term_filters.append(or_(*searchable_fields))
+
+            filters = and_(*term_filters)
             base_query = base_query.where(filters)
             count_query = count_query.where(filters)
 

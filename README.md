@@ -362,6 +362,8 @@ Para importar en herramientas como Postman, Insomnia, etc.
    - `SQLALCHEMY_DATABASE_URI=mssql+pymssql://...`
    - `ENABLE_DB_INIT=false`  
      Mantenerlo en `false` en App Service para evitar que el arranque haga `create_all()`.
+    - `MOVEMENT_JOB_STATUS_MAX_ENTRIES=500`  
+       Limita el cache en memoria de estados de jobs de movimientos para reducir riesgo de OOM.
    - Otras variables del `.env` local
 
 4. **Deploy**:
