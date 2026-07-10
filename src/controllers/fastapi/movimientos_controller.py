@@ -634,13 +634,16 @@ async def movimientos_query(
 async def movimientos_filter(
     offset: int = 0,
     limit: int = 100,
+    page: int | None = None,
     value: str = "",
     header_value: str | None = Header(default=None, alias="value"),
     db: Session = Depends(get_db),
 ) -> dict:
     search_value = (header_value or value or "").strip()
-    safe_offset = max(int(offset), 0)
     safe_limit = max(1, min(int(limit), 100))
+    safe_page = int(page) if page is not None else max(int(offset), 0)
+    safe_page = max(safe_page, 0)
+    safe_offset = safe_page * safe_limit
 
     try:
         movimientos, total_rows = _fetch_movimientos_some_fields(db, safe_offset, safe_limit, search_value)
@@ -655,13 +658,16 @@ async def movimientos_filter(
 async def movimientos_filter_fields(
     offset: int = 0,
     limit: int = 100,
+    page: int | None = None,
     value: str = "",
     header_value: str | None = Header(default=None, alias="value"),
     db: Session = Depends(get_db),
 ) -> dict:
     search_value = (header_value or value or "").strip()
-    safe_offset = max(int(offset), 0)
     safe_limit = max(1, min(int(limit), 100))
+    safe_page = int(page) if page is not None else max(int(offset), 0)
+    safe_page = max(safe_page, 0)
+    safe_offset = safe_page * safe_limit
 
     try:
         movimientos, _ = _fetch_movimientos_some_fields(db, safe_offset, safe_limit, search_value)
