@@ -337,6 +337,17 @@ class MovimientosModel(Base):
         search_value: str | None = None,
     ) -> tuple[list[dict], int]:
         movimientos_tbl = MovimientosModel.__table__
+        normalized_search = (search_value or "").strip()
+        # Fast-path for common exact codigo lookups (e.g. AV01660).
+        # This avoids the heavier multi-column ILIKE filter for this case.
+        alnum_search = normalized_search.replace("-", "").replace("_", "")
+        use_exact_codigo = (
+            bool(normalized_search)
+            and " " not in normalized_search
+            and 5 <= len(normalized_search) <= 32
+            and any(char.isdigit() for char in normalized_search)
+            and alnum_search.isalnum()
+        )
         base_stmt = (
             select(
                 movimientos_tbl.c.id,
@@ -357,29 +368,42 @@ class MovimientosModel(Base):
             )
         )
 
-        filters = []
-        if search_value:
-            pattern = f"%{search_value}%"
-            filters.append(
-                (
-                    DispositivosModel.codigo.ilike(pattern)
-                    | DispositivosModel.producto.ilike(pattern)
-                    | movimientos_tbl.c.idMovimiento.ilike(pattern)
-                    | LugaresModel.lugar.ilike(pattern)
-                    | _tipomoves.c.tipo.ilike(pattern)
-                    | _usuarios.c.nombre.ilike(pattern)
-                    | _usuarios.c.username.ilike(pattern)
-                )
+        search_filter = None
+        if use_exact_codigo:
+            search_filter = (DispositivosModel.codigo == normalized_search)
+        elif normalized_search:
+            pattern = f"%{normalized_search}%"
+            search_filter = (
+                DispositivosModel.codigo.ilike(pattern)
+                | DispositivosModel.producto.ilike(pattern)
+                | movimientos_tbl.c.idMovimiento.ilike(pattern)
+                | LugaresModel.lugar.ilike(pattern)
+                | _tipomoves.c.tipo.ilike(pattern)
+                | _usuarios.c.nombre.ilike(pattern)
+                | _usuarios.c.username.ilike(pattern)
             )
 
-        count_stmt = select(func.count()).select_from(base_stmt.subquery())
-        if filters:
-            count_stmt = select(func.count()).select_from(base_stmt.where(*filters).subquery())
+        if search_filter is None:
+            count_stmt = select(func.count()).select_from(movimientos_tbl)
+        elif use_exact_codigo:
+            count_stmt = (
+                select(func.count())
+                .select_from(
+                    movimientos_tbl.join(DispositivosModel, DispositivosModel.id == movimientos_tbl.c.dispositivoId)
+                )
+                .where(search_filter)
+            )
+        else:
+            count_stmt = select(func.count()).select_from(base_stmt.where(search_filter).subquery())
         total_rows = int(db.execute(count_stmt).scalar() or 0)
 
+        data_stmt = base_stmt
+        if search_filter is not None:
+            data_stmt = data_stmt.where(search_filter)
+
         data_stmt = (
-            base_stmt.where(*filters)
-            .order_by(movimientos_tbl.c.fechaAlta.desc())
+            data_stmt
+            .order_by(movimientos_tbl.c.fechaAlta.desc(), movimientos_tbl.c.id.desc())
             .offset(int(offset))
             .limit(int(limit))
         )

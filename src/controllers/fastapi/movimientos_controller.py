@@ -639,9 +639,11 @@ async def movimientos_filter(
     db: Session = Depends(get_db),
 ) -> dict:
     search_value = (header_value or value or "").strip()
+    safe_offset = max(int(offset), 0)
+    safe_limit = max(1, min(int(limit), 100))
 
     try:
-        movimientos, total_rows = _fetch_movimientos_some_fields(db, offset, limit, search_value)
+        movimientos, total_rows = _fetch_movimientos_some_fields(db, safe_offset, safe_limit, search_value)
         if not movimientos:
             return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
         return fastapi_response(movimientos, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
@@ -658,9 +660,11 @@ async def movimientos_filter_fields(
     db: Session = Depends(get_db),
 ) -> dict:
     search_value = (header_value or value or "").strip()
+    safe_offset = max(int(offset), 0)
+    safe_limit = max(1, min(int(limit), 100))
 
     try:
-        movimientos, _ = _fetch_movimientos_some_fields(db, offset, limit, search_value)
+        movimientos, _ = _fetch_movimientos_some_fields(db, safe_offset, safe_limit, search_value)
         return fastapi_response(movimientos, status.HTTP_200_OK, "TPM-3")
     except Exception as err:
         return fastapi_response(None, status.HTTP_500_INTERNAL_SERVER_ERROR, "TPM-7", message=str(err))

@@ -194,6 +194,12 @@ async def dispositivos_filterdevice_fields(
     db: Session = Depends(get_db),
 ) -> dict:
     search_value = (header_value or value or "").strip()
+    logger.info(
+        "filterdeviceFields called | offset=%s limit=%s search_value='%s'",
+        offset,
+        limit,
+        search_value,
+    )
     serialized, total_rows = DispositivosModelSchema.filter_fields(
         db,
         offset=offset,
@@ -204,7 +210,9 @@ async def dispositivos_filterdevice_fields(
     )
 
     if not serialized:
+        logger.info("filterdeviceFields no results | total_rows=%s", total_rows)
         return fastapi_response(None, status.HTTP_404_NOT_FOUND, "TPM-4")
+    logger.info("filterdeviceFields success | items=%s total_rows=%s", len(serialized), total_rows)
     return fastapi_response(serialized, status.HTTP_200_OK, "TPM-3", isQuery=True, total=total_rows)
 
 
