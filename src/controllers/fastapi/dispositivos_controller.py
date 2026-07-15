@@ -189,21 +189,28 @@ async def dispositivos_filterdevice(
 async def dispositivos_filterdevice_fields(
     offset: int = 0,
     limit: int = 100,
+    page: int | None = None,
     value: str = "",
     header_value: str | None = Header(default=None, alias="value"),
     db: Session = Depends(get_db),
 ) -> dict:
     search_value = (header_value or value or "").strip()
+    safe_limit = max(1, min(int(limit), 100))
+    safe_page = int(page) if page is not None else max(int(offset), 0)
+    safe_page = max(safe_page, 0)
+    safe_offset = safe_page * safe_limit
     logger.info(
-        "filterdeviceFields called | offset=%s limit=%s search_value='%s'",
+        "filterdeviceFields called | offset=%s limit=%s page=%s resolved_offset=%s search_value='%s'",
         offset,
         limit,
+        safe_page,
+        safe_offset,
         search_value,
     )
     serialized, total_rows = DispositivosModelSchema.filter_fields(
         db,
-        offset=offset,
-        limit=limit,
+        offset=safe_offset,
+        limit=safe_limit,
         search_value=search_value,
         in_storage=0,
         minimal=False,
