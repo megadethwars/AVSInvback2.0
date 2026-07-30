@@ -196,6 +196,7 @@ async def dispositivos_filterdevice_fields(
 ) -> dict:
     search_value = (header_value or value or "").strip()
     safe_limit = max(1, min(int(limit), 100))
+    # Legacy contract for this endpoint: offset is used as page index.
     safe_page = int(page) if page is not None else max(int(offset), 0)
     safe_page = max(safe_page, 0)
     safe_offset = safe_page * safe_limit

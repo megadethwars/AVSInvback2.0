@@ -61,7 +61,7 @@ class DispositivosModelSchema:
                 base_query = base_query.where(column == field_value)
 
         return db.execute(
-            base_query.order_by(DispositivosModel.producto).offset(offset).limit(limit)
+            base_query.order_by(DispositivosModel.producto, DispositivosModel.id).offset(offset).limit(limit)
         ).scalars().all()
 
     @staticmethod
@@ -75,6 +75,7 @@ class DispositivosModelSchema:
     ) -> tuple[list[dict], int]:
         base_query = (
             select(DispositivosModel)
+            .distinct(DispositivosModel.id)
             .join(LugaresModel, DispositivosModel.lugarId == LugaresModel.id, isouter=True)
             .join(StatusDevicesModel, DispositivosModel.statusId == StatusDevicesModel.id, isouter=True)
         )
@@ -122,7 +123,7 @@ class DispositivosModelSchema:
 
         total_rows = int(db.execute(count_query).scalar() or 0)
         rows = db.execute(
-            base_query.order_by(DispositivosModel.producto).offset(offset).limit(limit)
+            base_query.order_by(DispositivosModel.producto, DispositivosModel.id).offset(offset).limit(limit)
         ).scalars().all()
 
         if minimal:
@@ -135,7 +136,10 @@ class DispositivosModelSchema:
     def all_some_fields(db: Session, offset: int, limit: int) -> tuple[list[dict], int]:
         total_rows = int(db.execute(select(func.count()).select_from(DispositivosModel)).scalar() or 0)
         rows = db.execute(
-            select(DispositivosModel).order_by(DispositivosModel.producto).offset(offset).limit(limit)
+            select(DispositivosModel)
+            .order_by(DispositivosModel.producto, DispositivosModel.id)
+            .offset(offset)
+            .limit(limit)
         ).scalars().all()
         serialized = [DispositivosModelSchema.serialize_some_fields(row) for row in rows]
         return serialized, total_rows
