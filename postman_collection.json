@@ -1,0 +1,128 @@
+{
+  "info": {
+    "name": "Inventory API v2.0",
+    "description": "API de gestión de inventario - FastAPI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Verifica el estado de la API"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Lugares",
+      "item": [
+        {
+          "name": "Listar todos los lugares",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lugares",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "lugares"]
+            },
+            "description": "Obtiene la lista completa de ubicaciones/lugares"
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener lugar por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lugares/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "lugares", "1"]
+            },
+            "description": "Obtiene los detalles de un lugar específico"
+          },
+          "response": []
+        },
+        {
+          "name": "Crear nuevo lugar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lugar\": \"Almacén Secundario\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/lugares",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "lugares"]
+            },
+            "description": "Crea una nueva ubicación/lugar en el sistema"
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar lugar",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lugar\": \"Almacén Principal Actualizado\",\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/lugares/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "lugares", "1"]
+            },
+            "description": "Actualiza los datos de un lugar existente"
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar lugar",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lugares/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "lugares", "1"]
+            },
+            "description": "Elimina un lugar del sistema"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ]
+}

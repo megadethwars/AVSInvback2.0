@@ -1,80 +1,88 @@
-# app/src/models/CatalogoModel.py
-from marshmallow import fields, Schema, validate
-import datetime
-from . import db
+# src/models/LugaresModel.py
+"""Lugares Model using native SQLAlchemy 2.0"""
 
-class LugaresModel(db.Model):
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, select
+from sqlalchemy.orm import Session
+
+from . import Base
+
+
+class LugaresModel(Base):
     """
-    Catalogo Model
+    Lugares (Locations/Places) Model
+    Table: invLugares
     """
     
     __tablename__ = 'invLugares'
 
-    id = db.Column(db.Integer, primary_key=True)
-    lugar = db.Column(db.String(100))
-    activo = db.Column(db.Boolean)
-    fechaAlta = db.Column(db.DateTime)
-    fechaUltimaModificacion = db.Column(db.DateTime)
+    id = Column(Integer, primary_key=True, index=True)
+    lugar = Column(String(100), nullable=False)
+    activo = Column(Boolean, default=True)
+    fechaAlta = Column(DateTime, default=datetime.utcnow)
+    fechaUltimaModificacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def __init__(self, data):
-        """
-        Class constructor
-        """
-        self.lugar = data.get('lugar')
-        self.fechaAlta = datetime.datetime.utcnow()
-        self.fechaUltimaModificacion = datetime.datetime.utcnow()
-        self.activo = data.get("activo")
-
-    def save(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self, data):
-        for key, item in data.items():
-            setattr(self, key, item)
-        self.fechaUltimaModificacion = datetime.datetime.utcnow()
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        db.session.commit()
+    def __init__(self, lugar: str, activo: bool = True):
+        """Initialize a new Lugar"""
+        self.lugar = lugar
+        self.activo = activo
+        self.fechaAlta = datetime.utcnow()
+        self.fechaUltimaModificacion = datetime.utcnow()
 
     @staticmethod
-    def get_all_lugares():
-        return LugaresModel.query.all()
+    def get_all_lugares(db: Session):
+        """Get all locations"""
+        query = select(LugaresModel)
+        return db.execute(query).scalars().all()
 
     @staticmethod
-    def get_one_lugar(id):
-        return LugaresModel.query.get(id)
+    def get_one_lugar(db: Session, id: int):
+        """Get a single location by ID"""
+        query = select(LugaresModel).where(LugaresModel.id == id)
+        return db.execute(query).scalar_one_or_none()
 
     @staticmethod
-    def get_lugar_by_nombre(value):
-        return LugaresModel.query.filter_by(lugar=value).first()
-    
+    def get_lugar_by_nombre(db: Session, value: str):
+        """Get location by name"""
+        query = select(LugaresModel).where(LugaresModel.lugar == value)
+        return db.execute(query).scalar_one_or_none()
+
     @staticmethod
-    def get_lugar_by_like(value,offset,limit):
-        return LugaresModel.query.with_entities(LugaresModel.id).filter(LugaresModel.lugar.ilike(f'%{value}%') ).order_by(LugaresModel.id).paginate(page=offset,per_page=limit,error_out=False)
+    def get_lugar_by_like(db: Session, value: str, offset: int = 0, limit: int = 10):
+        """Search locations by name pattern"""
+        query = (
+            select(LugaresModel)
+            .where(LugaresModel.lugar.ilike(f'%{value}%'))
+            .order_by(LugaresModel.id)
+            .offset(offset)
+            .limit(limit)
+        )
+        return db.execute(query).scalars().all()
 
-    def __repr(self):
-        return '<id {}>'.format(self.id)
+    @staticmethod
+    def create_lugar(db: Session, lugar: str, activo: bool = True) -> 'LugaresModel':
+        """Create a new location"""
+        new_lugar = LugaresModel(lugar=lugar, activo=activo)
+        db.add(new_lugar)
+        db.commit()
+        db.refresh(new_lugar)
+        return new_lugar
 
-class LugaresSchema(Schema):
-    """
-    lugar Schema
-    """
-    id = fields.Int()
-    lugar = fields.Str(required=True, validate=[validate.Length(max=100)])
-    fechaAlta = fields.DateTime()
-    fechaUltimaModificacion = fields.DateTime()
-    activo = fields.Boolean()
+    def update(self, db: Session, **kwargs):
+        """Update location fields"""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        self.fechaUltimaModificacion = datetime.utcnow()
+        db.add(self)
+        db.commit()
+        db.refresh(self)
+        return self
 
+    def delete(self, db: Session):
+        """Delete location"""
+        db.delete(self)
+        db.commit()
 
-class LugaresSchemaUpdate(Schema):
-    """
-    lugar Schema
-    """
-    id = fields.Int()
-    lugar = fields.Str(validate=[validate.Length(max=100)])
-    fechaAlta = fields.DateTime()
-    fechaUltimaModificacion = fields.DateTime()
-    activo = fields.Boolean()
+    def __repr__(self):
+        return f'<Lugar {self.id}: {self.lugar}>'

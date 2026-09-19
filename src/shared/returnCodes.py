@@ -1,4 +1,5 @@
 from flask import Response, json
+from fastapi.responses import JSONResponse
 
 # Diccionario de return codes
 app_codes = {
@@ -20,9 +21,14 @@ app_codes = {
     "TPM-16": "Ocurrio un error al crear algunos registros",
     "TPM-17":"No hay suficientes equipos para ejecutar salida",
     "TPM-18":"Acceso autorizado",
-    "TPM-19":"Usuario dado de baja, error en inicio de sesion"
+    "TPM-19":"Usuario dado de baja, error en inicio de sesion",
+    "TPM-20":"el producto ya esta en almacen",
+    "TPM-21":"los datos de entrada no son validos, no hay suficiente informacion",
+    "TPM-22":"si el movimiento es de salida, el lugar no puede ser el almacen",
+    "TPM-23":"si el movimiento es de entrada, el lugar no puede ser el distinto al almacen",
+    "TPM-24":"al menos un dispositivo del job pasado esta en proceso y aun no ha terminado",
+    "TPM-25":"No se pudo agregar el nuevo job task",
 }
-
 
 def partial_response(app_code,message="",name="",id=0):
     if message=="":
@@ -70,3 +76,46 @@ def custom_response(res, status_code, app_code, message="", item=[],isQuery=Fals
         response=json.dumps(response),
         status=status_code,
     )
+
+
+def fastapi_response(res, status_code, app_code, message="", items=[], isQuery=False, total=0):
+    """
+    FastAPI Custom Response Function (returns JSONResponse)
+    Compatible with legacy API contract
+    
+    Args:
+        res: Response data
+        status_code: HTTP status code
+        app_code: TPM code (e.g., "TPM-1", "TPM-5")
+        message: Custom message or empty for default
+        items: List of error/object dicts from partial_response() or additional data
+        isQuery: Include total_rows in response
+        total: Total rows for query responses
+    """
+    messageSent = list()
+    if message == "":
+        messageSent.append({"status": app_codes[app_code]})
+    else:
+        messageSent.append({"status": str(message)})
+    
+    if isinstance(items, list):
+        for x in items:
+            messageSent.append(x)
+    elif items != "":
+        messageSent.append({"object": items})
+
+    if isQuery:
+        response = {
+            "app_code": app_code,
+            "message": messageSent,
+            "data": res,
+            "total_rows": total
+        }
+    else:
+        response = {
+            "app_code": app_code,
+            "message": messageSent,
+            "data": res,
+        }
+    
+    return JSONResponse(status_code=status_code, content=response)
